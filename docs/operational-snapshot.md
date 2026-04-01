@@ -16,6 +16,10 @@ Each run directory should contain:
 - `content_briefs.md`
 - `editorial_plan.json`
 - `editorial_plan.md`
+- `editorial_assignments.json`
+- `editorial_assignments.md`
+- `editorial_assignments.csv`
+- `weekly_export_summary.md`
 - `reporting_snapshot.json`
 - `ecosystem_summary.json`
 - `ecosystem_report.md`
@@ -40,6 +44,23 @@ For a normal review cycle:
 
 1. run the pipeline
 2. open `snapshot_manifest.json` first
-3. use it to jump into the summary, review queue, reporting snapshot, brief pack, editorial plan, and markdown report
+3. use it to jump into the summary, review queue, reporting snapshot, brief pack, editorial plan, assignment tracker, and markdown report
 
 This keeps each run inspectable without adding packaging, a UI, or another storage system.
+
+## One-Click Weekly Run
+
+For a normal operator cycle against local exports in `data/raw/`, use:
+
+```bash
+python3 -m src.reporting.weekly_run
+```
+
+This runs the existing local pipeline flow, verifies the expected snapshot artifacts exist, and prints a short operator-facing summary with:
+
+- output folder
+- candidate count
+- brief count
+- `use_now` / `needs_review` / `hold` counts
+- assignment count
+- the first files to open

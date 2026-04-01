@@ -92,6 +92,12 @@ Run the same pipeline against local CSV exports placed in `data/raw/`:
 python3 -m src.reporting.raw_pipeline
 ```
 
+Run the one-click weekly operator cycle against local CSV exports:
+
+```bash
+python3 -m src.reporting.weekly_run
+```
+
 Put landed `Active Members`, `Mentors`, and `Cohorts` CSV exports in `data/raw/`.
 
 Optional reviewed-truth overrides live in `data/reviewed_truth/overrides.json`. Start from `data/reviewed_truth/overrides.example.json` if you need a local template.
@@ -127,6 +133,7 @@ Recurring owner checklist: `docs/owner-checklist.md`
 Content candidate export: `docs/content-candidates.md`
 Content brief export: `docs/content-briefs.md`
 Editorial planning pack: `docs/editorial-planning.md`
+Editorial assignment tracker: `docs/editorial-assignments.md`
 
 ## Current Scope
 

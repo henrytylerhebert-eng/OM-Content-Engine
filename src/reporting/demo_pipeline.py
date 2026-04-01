@@ -21,10 +21,13 @@ from src.review.reviewed_truth import (
 )
 from src.reporting.content_candidates import build_content_candidates_from_bundle, write_content_candidate_outputs
 from src.reporting.content_briefs import build_content_briefs_from_bundle, write_content_brief_outputs
+from src.reporting.editorial_assignments import build_assignments as build_editorial_assignments
+from src.reporting.editorial_assignments import write_assignment_outputs
 from src.reporting.editorial_plan import build_plan as build_editorial_plan
 from src.reporting.editorial_plan import write_outputs as write_editorial_plan_outputs
 from src.reporting.ecosystem_reports import build_reporting_snapshot, render_markdown_report
 from src.reporting.ecosystem_summary import build_ecosystem_summary
+from src.reporting.weekly_export_summary import write_weekly_export_summary
 from src.transform.normalize_affiliations import normalize_affiliations_from_row
 from src.transform.normalize_organizations import normalize_organization_row
 from src.transform.normalize_participation import normalize_explicit_cohort_row, normalize_participation_row
@@ -53,6 +56,10 @@ SNAPSHOT_ARTIFACT_DESCRIPTIONS = {
     "content_briefs.md": "Readable markdown briefing pack for weekly planning and drafting review.",
     "editorial_plan.json": "Weekly planning buckets built from internal briefs: use now, needs review, and hold.",
     "editorial_plan.md": "Readable markdown planning pack for weekly editorial meetings.",
+    "editorial_assignments.json": "Execution tracker for editorial owners, cycles, and status updates.",
+    "editorial_assignments.md": "Readable markdown assignment tracker for weekly execution review.",
+    "editorial_assignments.csv": "Flat CSV version of the editorial assignment tracker.",
+    "weekly_export_summary.md": "Compact weekly roll-up of plan counts, assignment status, and top unresolved blockers.",
     "snapshot_manifest.json": "Concise manifest describing the run inputs and produced artifacts.",
 }
 
@@ -648,7 +655,13 @@ def write_demo_outputs(bundle: dict[str, object], output_dir: Path = DEFAULT_OUT
     written_paths.extend(write_content_candidate_outputs(candidate_rows, output_dir))
     brief_rows = build_content_briefs_from_bundle(bundle)
     written_paths.extend(write_content_brief_outputs(brief_rows, output_dir))
-    written_paths.extend(write_editorial_plan_outputs(build_editorial_plan(brief_rows), output_dir))
+    editorial_plan = build_editorial_plan(brief_rows)
+    written_paths.extend(write_editorial_plan_outputs(editorial_plan, output_dir))
+    editorial_assignments = build_editorial_assignments(editorial_plan)
+    written_paths.extend(write_assignment_outputs(editorial_assignments, output_dir))
+    written_paths.append(
+        write_weekly_export_summary(editorial_plan, editorial_assignments, bundle.get("review_rows", []), output_dir)
+    )
 
     manifest_path = output_dir / "snapshot_manifest.json"
     artifact_paths = written_paths + [manifest_path]

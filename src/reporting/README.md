@@ -21,6 +21,7 @@ Current reporting outputs support:
 - internal content candidate exports
 - internal content brief packs
 - weekly editorial planning packs
+- weekly editorial assignment trackers
 - missing-content-asset counts
 - records requiring review
 
@@ -55,8 +56,16 @@ Local raw-data command:
 python3 -m src.reporting.raw_pipeline
 ```
 
+One-click weekly operator command:
+
+```bash
+python3 -m src.reporting.weekly_run
+```
+
 Both pipeline entry points write the standard operational snapshot pack, including `snapshot_manifest.json` as a short index for the run.
 
 The same run also writes `content_candidates.json` and `content_candidates.csv` for internal planning use.
 It also writes `content_briefs.json` and `content_briefs.md` for internal drafting and review.
 It also writes `editorial_plan.json` and `editorial_plan.md` for weekly planning and owner assignment.
+It also writes `editorial_assignments.json`, `editorial_assignments.md`, and `editorial_assignments.csv` for weekly execution tracking.
+It also writes `weekly_export_summary.md` for a fast weekly roll-up of use-now counts, review workload, and assignment status.
