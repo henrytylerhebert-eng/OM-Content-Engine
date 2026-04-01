@@ -59,6 +59,68 @@ class AirtableSyncError(RuntimeError):
     """Raised when an Airtable sync request fails."""
 
 
+def _extract_airtable_error_type(details: str) -> str:
+    try:
+        payload = json.loads(details)
+    except (TypeError, ValueError):
+        payload = {}
+    error = payload.get("error", {})
+    if isinstance(error, dict):
+        error_type = str(error.get("type") or "").strip()
+        if error_type:
+            return error_type
+    if "INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND" in str(details):
+        return "INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND"
+    return ""
+
+
+def _extract_airtable_error_message(details: str) -> str:
+    try:
+        payload = json.loads(details)
+    except (TypeError, ValueError):
+        payload = {}
+    error = payload.get("error", {})
+    if isinstance(error, dict):
+        message = str(error.get("message") or "").strip()
+        if message:
+            return message
+    return str(details or "").strip()
+
+
+def _format_airtable_http_error(
+    *,
+    method: str,
+    table_name: str,
+    config: "AirtableSyncConfig",
+    status_code: int,
+    details: str,
+) -> str:
+    error_type = _extract_airtable_error_type(details)
+    error_message = _extract_airtable_error_message(details)
+
+    lines = [
+        "Airtable %s failed." % method,
+        "Base ID: %s" % config.base_id,
+        "Table: %s" % table_name,
+        "HTTP status: %s" % status_code,
+    ]
+    if error_type:
+        lines.append("Airtable error type: %s" % error_type)
+    if error_message:
+        lines.append("Airtable message: %s" % error_message)
+
+    if error_type == "INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND":
+        lines.append(
+            "Looks like permissions or model-not-found: check base access for AIRTABLE_TOKEN and confirm the table name exists exactly as configured."
+        )
+    elif status_code == 403:
+        lines.append("Looks like a permissions issue for this base or table.")
+    elif status_code == 404:
+        lines.append("Looks like the base or table name was not found.")
+
+    return "\n".join(lines)
+
+
 @dataclass(frozen=True)
 class AirtableSyncConfig:
     """Small, explicit Airtable sync settings surface."""
@@ -259,8 +321,13 @@ class AirtableClient:
         except HTTPError as exc:
             details = exc.read().decode("utf-8", errors="replace")
             raise AirtableSyncError(
-                "Airtable %s failed for table %s: %s %s"
-                % (method, table_name, exc.code, details)
+                _format_airtable_http_error(
+                    method=method,
+                    table_name=table_name,
+                    config=self.config,
+                    status_code=exc.code,
+                    details=details,
+                )
             ) from exc
         except URLError as exc:
             raise AirtableSyncError("Airtable request failed: %s" % exc.reason) from exc

@@ -2,15 +2,19 @@
 
 import json
 import os
+from io import BytesIO
 from pathlib import Path
 import subprocess
 import sys
 from types import SimpleNamespace
 from typing import Optional
+from urllib.error import HTTPError
 
 import pytest
 
 from src.reporting.editorial_assignments_airtable_sync import (
+    AirtableClient,
+    AirtableSyncConfig,
     AirtableSyncError,
     render_sync_summary,
     sync_editorial_assignments,
@@ -416,3 +420,35 @@ def test_missing_airtable_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     assert result.exit_code != 0
     assert "Editorial Assignments Airtable Sync Failed" in result.output
     assert "Missing AIRTABLE_TOKEN" in result.output
+
+
+def test_airtable_http_error_includes_base_table_and_diagnosis() -> None:
+    def failing_opener(request: object) -> object:
+        raise HTTPError(
+            url=str(getattr(request, "full_url", "")),
+            code=403,
+            msg="Forbidden",
+            hdrs=None,
+            fp=BytesIO(
+                b'{"error":{"type":"INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND","message":"Invalid permissions, or the requested model was not found."}}'
+            ),
+        )
+
+    client = AirtableClient(
+        AirtableSyncConfig(
+            token="test-token",
+            base_id="appExample123",
+            editorial_assignments_table="Editorial Assignments",
+            sync_logs_table="Data Source Sync Logs",
+        ),
+        opener=failing_opener,
+    )
+
+    with pytest.raises(AirtableSyncError) as exc_info:
+        client.list_records("Editorial Assignments", fields=["assignment_id"])
+
+    message = str(exc_info.value)
+    assert "Base ID: appExample123" in message
+    assert "Table: Editorial Assignments" in message
+    assert "Airtable error type: INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND" in message
+    assert "Looks like permissions or model-not-found" in message
