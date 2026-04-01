@@ -129,16 +129,23 @@ def test_sync_creates_new_airtable_assignment_and_log(tmp_path: Path) -> None:
     created = next(iter(client._records_by_id.values()))
     assert created["fields"]["assignment_id"] == "assignment:needs_review:person_jane_acme_ai"
     assert created["fields"]["entity_id"] == "person:jane_acme_ai"
-    assert created["fields"]["person_name"] == "Jane Founder"
+    assert created["fields"]["primary_person_name"] == "Jane Founder"
+    assert created["fields"]["bucket"] == "needs_review"
     assert created["fields"]["brief_status"] == "planning_safe_only"
     assert created["fields"]["readiness_level"] == "spotlight_ready"
     assert created["fields"]["trust_basis"] == "heuristic_only"
     assert created["fields"]["public_ready"] == "false"
     assert created["fields"]["suggested_angle"] == "founder_journey"
     assert created["fields"]["recommended_action"] == "apply_reviewed_truth_override"
+    assert created["fields"]["priority"] == "medium"
+    assert created["fields"]["target_cycle"] == "next_week"
+    assert created["fields"]["next_step"] == "apply_reviewed_truth_override"
+    assert created["fields"]["blocking_notes"] == ""
     assert created["fields"]["source_hook"] == "A founder story worth validating."
     assert created["fields"]["evidence_summary"] == "org_type=startup; founder; website"
-    assert created["fields"]["status"] == "not_started"
+    assert created["fields"]["assignment_status"] == "not_started"
+    assert "person_name" not in created["fields"]
+    assert "status" not in created["fields"]
     assert (tmp_path / "editorial_assignments_sync_results.json").exists()
     state = json.loads((tmp_path / "state.json").read_text(encoding="utf-8"))
     assert state["records"]["assignment:needs_review:person_jane_acme_ai"]["record_id"] == created["id"]
@@ -151,10 +158,10 @@ def test_sync_skips_remote_manual_edit_without_explicit_overwrite(tmp_path: Path
         "fields": {
             "assignment_id": assignment["assignment_id"],
             "org_name": "Acme AI",
-            "person_name": "Jane Founder",
+            "primary_person_name": "Jane Founder",
             "bucket": "needs_review",
             "owner": "",
-            "status": "shipped",
+            "assignment_status": "shipped",
             "priority": "medium",
             "target_cycle": "next_week",
             "next_step": "draft_feature",
@@ -172,10 +179,10 @@ def test_sync_skips_remote_manual_edit_without_explicit_overwrite(tmp_path: Path
                         "last_synced_fields": {
                             "assignment_id": assignment["assignment_id"],
                             "org_name": "Acme AI",
-                            "person_name": "Jane Founder",
+                            "primary_person_name": "Jane Founder",
                             "bucket": "needs_review",
                             "owner": "",
-                            "status": "not_started",
+                            "assignment_status": "not_started",
                             "priority": "medium",
                             "target_cycle": "next_week",
                             "next_step": "apply_reviewed_truth_override",
@@ -202,7 +209,7 @@ def test_sync_skips_remote_manual_edit_without_explicit_overwrite(tmp_path: Path
 
     assert result["counts"]["skipped"] == 1
     assert result["records"][0]["reason"] == "remote_fields_changed_since_last_sync"
-    assert client._records_by_id["rec_1"]["fields"]["status"] == "shipped"
+    assert client._records_by_id["rec_1"]["fields"]["assignment_status"] == "shipped"
 
 
 def test_sync_allows_per_assignment_overwrite_when_explicitly_requested(tmp_path: Path) -> None:
@@ -212,10 +219,10 @@ def test_sync_allows_per_assignment_overwrite_when_explicitly_requested(tmp_path
         "fields": {
             "assignment_id": assignment["assignment_id"],
             "org_name": "Acme AI",
-            "person_name": "Jane Founder",
+            "primary_person_name": "Jane Founder",
             "bucket": "needs_review",
             "owner": "",
-            "status": "shipped",
+            "assignment_status": "shipped",
             "priority": "medium",
             "target_cycle": "next_week",
             "next_step": "draft_feature",
@@ -233,10 +240,10 @@ def test_sync_allows_per_assignment_overwrite_when_explicitly_requested(tmp_path
                         "last_synced_fields": {
                             "assignment_id": assignment["assignment_id"],
                             "org_name": "Acme AI",
-                            "person_name": "Jane Founder",
+                            "primary_person_name": "Jane Founder",
                             "bucket": "needs_review",
                             "owner": "",
-                            "status": "not_started",
+                            "assignment_status": "not_started",
                             "priority": "medium",
                             "target_cycle": "next_week",
                             "next_step": "apply_reviewed_truth_override",
@@ -263,7 +270,7 @@ def test_sync_allows_per_assignment_overwrite_when_explicitly_requested(tmp_path
     )
 
     assert result["counts"]["updated"] == 1
-    assert client._records_by_id["rec_1"]["fields"]["status"] == "in_progress"
+    assert client._records_by_id["rec_1"]["fields"]["assignment_status"] == "in_progress"
     assert client._records_by_id["rec_1"]["fields"]["owner"] == "tylerhebert"
 
 
@@ -274,10 +281,10 @@ def test_sync_skips_existing_manual_airtable_row_without_state(tmp_path: Path) -
         "fields": {
             "assignment_id": assignment["assignment_id"],
             "org_name": "Acme AI",
-            "person_name": "Jane Founder",
+            "primary_person_name": "Jane Founder",
             "bucket": "use_now",
             "owner": "manual_owner",
-            "status": "drafted",
+            "assignment_status": "drafted",
             "priority": "high",
             "target_cycle": "this_week",
             "next_step": "manual_follow_up",

@@ -31,7 +31,7 @@ It is not allowed to:
 
 Table: `Editorial Assignments`
 
-The sync contract should mirror these fields directly from the local assignment output:
+The sync contract mirrors these Airtable fields directly from the local assignment output:
 
 - `assignment_id`
 - `entity_id`
@@ -54,17 +54,32 @@ The sync contract should mirror these fields directly from the local assignment 
 - `source_hook`
 - `evidence_summary`
 
-Recommended Airtable field labels may stay aligned with the local field names.
+Use the same Airtable field names as the local assignment output.
 
-If the Airtable team prefers friendlier display labels, that is acceptable, but the mapping must remain explicit in code and documentation.
+Exact field mapping:
 
-Minimum safe field mapping:
+- `assignment_id` -> `assignment_id`
+- `entity_id` -> `entity_id`
+- `org_name` -> `org_name`
+- `primary_person_name` -> `primary_person_name`
+- `bucket` -> `bucket`
+- `brief_status` -> `brief_status`
+- `readiness_level` -> `readiness_level`
+- `trust_basis` -> `trust_basis`
+- `public_ready` -> `public_ready`
+- `suggested_angle` -> `suggested_angle`
+- `suggested_format` -> `suggested_format`
+- `recommended_action` -> `recommended_action`
+- `owner` -> `owner`
+- `target_cycle` -> `target_cycle`
+- `assignment_status` -> `assignment_status`
+- `priority` -> `priority`
+- `blocking_notes` -> `blocking_notes`
+- `next_step` -> `next_step`
+- `source_hook` -> `source_hook`
+- `evidence_summary` -> `evidence_summary`
 
-- `assignment_id` -> primary key field
-- `primary_person_name` -> `person_name`
-- `assignment_status` -> `status`
-
-Everything else should remain a direct projection from the local output.
+This keeps the Airtable row shape aligned with the local source-of-truth output and removes naming drift in live validation.
 
 ## 2. Required Airtable Table Shape
 
@@ -78,7 +93,7 @@ Recommended `Editorial Assignments` table shape:
   - single line text
 - `org_name`
   - single line text
-- `primary_person_name` or `person_name`
+- `primary_person_name`
   - single line text
 - `bucket`
   - single select or single line text
@@ -100,7 +115,7 @@ Recommended `Editorial Assignments` table shape:
   - collaborator, single select, or single line text
 - `target_cycle`
   - single select or single line text
-- `assignment_status` or `status`
+- `assignment_status`
   - single select or single line text
 - `priority`
   - single select or single line text
