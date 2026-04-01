@@ -1,7 +1,10 @@
 """Tests for the Airtable sync layer over editorial assignments."""
 
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 from types import SimpleNamespace
 from typing import Optional
 
@@ -90,6 +93,21 @@ class FakeAirtableClient:
         }
         self._records_by_id[record_id] = record
         return record
+
+
+def run_cli(*args: str, env: Optional[dict[str, str]] = None) -> SimpleNamespace:
+    repo_root = Path(__file__).resolve().parents[1]
+    completed = subprocess.run(
+        [sys.executable, "-m", "src.reporting.editorial_assignments_airtable_sync", *args],
+        cwd=str(repo_root),
+        env=env or os.environ.copy(),
+        capture_output=True,
+        text=True,
+    )
+    return SimpleNamespace(
+        exit_code=completed.returncode,
+        output=completed.stdout + completed.stderr,
+    )
 
 
 def test_sync_creates_new_airtable_assignment_and_log(tmp_path: Path) -> None:
@@ -336,3 +354,58 @@ def test_render_sync_summary_is_operator_facing() -> None:
     assert "Rows read: 7" in rendered
     assert "Rows created: 2" in rendered
     assert "Destination table: Editorial Assignments" in rendered
+
+
+def test_sync_rerun_is_idempotent(tmp_path: Path) -> None:
+    """A second sync of the same data must produce all-unchanged with zero creates."""
+
+    assignment = _assignment()
+    client = FakeAirtableClient()
+    source_file = tmp_path / "editorial_assignments.json"
+    source_file.write_text(json.dumps([assignment]), encoding="utf-8")
+    state_path = tmp_path / "state.json"
+
+    first = sync_editorial_assignments(
+        [assignment],
+        client=client,
+        source_file=source_file,
+        run_dir=tmp_path,
+        state_path=state_path,
+    )
+
+    assert first["counts"]["created"] == 1
+
+    second = sync_editorial_assignments(
+        [assignment],
+        client=client,
+        source_file=source_file,
+        run_dir=tmp_path,
+        state_path=state_path,
+    )
+
+    assert second["counts"]["created"] == 0
+    assert second["counts"]["updated"] == 0
+    assert second["counts"]["unchanged"] == 1
+    assert second["counts"]["skipped"] == 0
+    assert second["counts"]["errors"] == 0
+    assert len(client._records_by_id) == 1
+
+
+def test_missing_airtable_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The CLI must fail cleanly when Airtable config is missing."""
+
+    source_file = tmp_path / "editorial_assignments.json"
+    source_file.write_text(json.dumps([_assignment()]), encoding="utf-8")
+
+    monkeypatch.delenv("AIRTABLE_TOKEN", raising=False)
+    monkeypatch.delenv("AIRTABLE_BASE_ID", raising=False)
+
+    result = run_cli(
+        "--run-dir", str(tmp_path),
+        "--input-file", str(source_file),
+        env=os.environ.copy(),
+    )
+
+    assert result.exit_code != 0
+    assert "Editorial Assignments Airtable Sync Failed" in result.output
+    assert "Missing AIRTABLE_TOKEN" in result.output
