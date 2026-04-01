@@ -69,3 +69,11 @@ It also writes `content_briefs.json` and `content_briefs.md` for internal drafti
 It also writes `editorial_plan.json` and `editorial_plan.md` for weekly planning and owner assignment.
 It also writes `editorial_assignments.json`, `editorial_assignments.md`, and `editorial_assignments.csv` for weekly execution tracking.
 It also writes `weekly_export_summary.md` for a fast weekly roll-up of use-now counts, review workload, and assignment status.
+
+For shared team visibility without moving source-of-truth logic out of the repo, use:
+
+```bash
+python3 -m src.reporting.editorial_assignments_airtable_sync
+```
+
+That sync is one-way, upserts by `assignment_id`, protects manual Airtable edits by default, and logs each run to `Data Source Sync Logs`.

@@ -134,6 +134,7 @@ Content candidate export: `docs/content-candidates.md`
 Content brief export: `docs/content-briefs.md`
 Editorial planning pack: `docs/editorial-planning.md`
 Editorial assignment tracker: `docs/editorial-assignments.md`
+Editorial assignment Airtable sync: `docs/editorial-assignments-sync.md`
 
 ## Current Scope
 
