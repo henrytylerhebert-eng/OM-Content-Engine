@@ -25,4 +25,14 @@ class Settings:
     raw_data_dir: Path = ROOT_DIR / "data" / "raw"
     processed_data_dir: Path = ROOT_DIR / "data" / "processed"
     default_source_system: str = os.getenv("SOURCE_SYSTEM", "airtable_export")
-
+    airtable_token: str = os.getenv("AIRTABLE_TOKEN", "")
+    airtable_base_id: str = os.getenv("AIRTABLE_BASE_ID", "")
+    airtable_api_url: str = os.getenv("AIRTABLE_API_URL", "https://api.airtable.com/v0")
+    airtable_editorial_assignments_table: str = os.getenv(
+        "AIRTABLE_EDITORIAL_ASSIGNMENTS_TABLE",
+        "Editorial Assignments",
+    )
+    airtable_sync_logs_table: str = os.getenv(
+        "AIRTABLE_SYNC_LOGS_TABLE",
+        "Data Source Sync Logs",
+    )
