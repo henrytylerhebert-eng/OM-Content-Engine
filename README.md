@@ -135,6 +135,7 @@ Content brief export: `docs/content-briefs.md`
 Editorial planning pack: `docs/editorial-planning.md`
 Editorial assignment tracker: `docs/editorial-assignments.md`
 Editorial assignment Airtable sync: `docs/editorial-assignments-sync.md`
+Merge and rollout checklist: `docs/merge-and-rollout-checklist.md`
 
 ## Current Scope
 
