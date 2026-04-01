@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "om-content-engine"
+version = "0.1.0"
+description = "Read-optimized ecosystem intelligence layer for Opportunity Machine."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "sqlmodel>=0.0.22",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

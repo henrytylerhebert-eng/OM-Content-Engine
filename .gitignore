@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/reviewed_truth/*
+!data/reviewed_truth/.gitkeep
+!data/reviewed_truth/overrides.example.json
+data/*.db
+data/*.sqlite
+data/*.sqlite3

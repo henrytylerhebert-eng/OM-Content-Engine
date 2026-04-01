@@ -1,0 +1,180 @@
+{
+  "version": 1,
+  "description": "Example reviewed-truth overrides. Copy this file to data/reviewed_truth/overrides.json and edit locally.",
+  "rules": [
+    {
+      "id": "fix-bayou-org-type",
+      "target": "organizations",
+      "match": {
+        "source_table": "Active Members",
+        "source_record_id": "rec_member_004"
+      },
+      "set": {
+        "org_type": "service_provider"
+      },
+      "reason": "Human review confirmed this record belongs in the service-provider bucket.",
+      "reviewed_by": "ops_owner",
+      "reviewed_at": "2026-03-31"
+    },
+    {
+      "id": "keep-om-record-internal",
+      "target": "organizations",
+      "match": {
+        "source_table": "Active Members",
+        "source_record_id": "rec_member_005"
+      },
+      "set": {
+        "org_type": "internal"
+      },
+      "reason": "Internal operations records should stay segmented separately from the external ecosystem.",
+      "reviewed_by": "ops_owner",
+      "reviewed_at": "2026-03-31"
+    },
+    {
+      "id": "suppress-grouped-person-placeholder",
+      "target": "people",
+      "match": {
+        "source_record_id": "rec_placeholder_001"
+      },
+      "suppress": true,
+      "reason": "This row is a grouped or placeholder person record and should not be treated as canonical.",
+      "reviewed_by": "ops_owner",
+      "reviewed_at": "2026-03-31"
+    },
+    {
+      "id": "confirm-morgan-member-person",
+      "target": "people",
+      "match": {
+        "source_record_id": "rec_member_semi_001",
+        "person_resolution_basis": "semi_structured_member_side"
+      },
+      "set": {},
+      "reason": "Manual review confirmed this semi-structured member-side person should stay in reviewed outputs.",
+      "reviewed_by": "ops_owner",
+      "reviewed_at": "2026-04-01"
+    },
+    {
+      "id": "suppress-untrusted-member-person",
+      "target": "people",
+      "match": {
+        "source_record_id": "rec_member_semi_004",
+        "person_resolution_basis": "semi_structured_member_side"
+      },
+      "suppress": true,
+      "reason": "Manual review decided this semi-structured member-side person should not remain canonical.",
+      "reviewed_by": "ops_owner",
+      "reviewed_at": "2026-04-01"
+    },
+    {
+      "id": "designate-riley-spokesperson",
+      "target": "people",
+      "match": {
+        "id": "person:riley_gcmn_org"
+      },
+      "set": {
+        "public_facing_ready": true,
+        "speaker_ready": true
+      },
+      "reason": "Confirmed partner spokesperson for external-facing uses.",
+      "reviewed_by": "ops_owner",
+      "reviewed_at": "2026-03-31"
+    },
+    {
+      "id": "confirm-riley-content-eligibility",
+      "target": "person_content",
+      "match": {
+        "linked_person_id": "person:riley_gcmn_org"
+      },
+      "set": {
+        "content_eligible": true,
+        "content_ready": true,
+        "message_pillar": "newsletter_profile"
+      },
+      "reason": "Manual review approved this profile for internal content packaging.",
+      "reviewed_by": "ops_owner",
+      "reviewed_at": "2026-03-31"
+    },
+    {
+      "id": "confirm-riley-spotlight-suitability",
+      "target": "person_content",
+      "match": {
+        "linked_person_id": "person:riley_gcmn_org"
+      },
+      "set": {
+        "spotlight_ready": true,
+        "story_type": "speaker_profile"
+      },
+      "reason": "Manual review approved this person as a valid spotlight candidate for partner-facing storytelling.",
+      "reviewed_by": "ops_owner",
+      "reviewed_at": "2026-03-31"
+    },
+    {
+      "id": "deny-placeholder-content-use",
+      "target": "organization_content",
+      "match": {
+        "linked_organization_id": "org:rec_placeholder_001"
+      },
+      "set": {
+        "content_eligible": false,
+        "content_ready": false,
+        "spotlight_ready": false
+      },
+      "reason": "Placeholder records should not flow into content planning outputs.",
+      "reviewed_by": "ops_owner",
+      "reviewed_at": "2026-03-31"
+    },
+    {
+      "id": "resolve-delta-cohort-identity",
+      "target": "cohorts",
+      "match": {
+        "id": "cohort:builder_fall_2025_dropout"
+      },
+      "set": {
+        "cohort_name": "Builder Fall 2025"
+      },
+      "reason": "Human review separated the cohort label from the withdrawal note.",
+      "reviewed_by": "ops_owner",
+      "reviewed_at": "2026-04-01"
+    },
+    {
+      "id": "resolve-delta-cohort-status",
+      "target": "participations",
+      "match": {
+        "organization_id": "org:rec_member_006",
+        "cohort_id": "cohort:builder_fall_2025"
+      },
+      "set": {
+        "participation_status": "withdrawn",
+        "notes": "Human review confirmed this cohort entry represents a withdrawal."
+      },
+      "reason": "Cohort status was clarified during manual review.",
+      "reviewed_by": "ops_owner",
+      "reviewed_at": "2026-03-31"
+    },
+    {
+      "id": "approve-riley-for-public-use",
+      "target": "person_content",
+      "match": {
+        "linked_person_id": "person:riley_gcmn_org"
+      },
+      "set": {
+        "externally_publishable": true
+      },
+      "reason": "Manual review approved this profile for public-facing use.",
+      "reviewed_by": "ops_owner",
+      "reviewed_at": "2026-03-31"
+    },
+    {
+      "id": "suppress-resolved-org-type-flag",
+      "target": "review_rows",
+      "match": {
+        "source_record_id": "rec_member_004",
+        "flag_code": "review_missing_org_type"
+      },
+      "suppress": true,
+      "reason": "The org type was already resolved in reviewed truth.",
+      "reviewed_by": "ops_owner",
+      "reviewed_at": "2026-03-31"
+    }
+  ]
+}

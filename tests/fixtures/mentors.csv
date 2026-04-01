@@ -1,0 +1,4 @@
+Record ID,Full Name,Email,Expertise,Bio,Mentor Program Type,Mentor Location Type,Location,Timezone,Share Email Permission,Booking Link,Status,LinkedIn,Headshot URL,Employer
+rec_mentor_001,Morgan Guide,morgan@example.com,"AI, Go-to-market",AI mentor and go-to-market advisor for early-stage founders.,Builder,Local,Lafayette LA,America/Chicago,yes,https://calendar.example.com/morgan,Active,https://linkedin.com/in/morganguide,https://images.example.com/morgan.jpg,Guide Advisory
+rec_mentor_002,Priya Remote,priya@example.com,"Fundraising, SaaS",Remote mentor for B2B founders entering enterprise sales.,Builder,Remote,Austin TX,America/Chicago,yes,https://calendar.example.com/priya,Active,https://linkedin.com/in/priyaremote,,Remote Capital Partners
+rec_mentor_003,Jordan Sparse,,Operations,,Builder,,,,no,,Active,,,Independent operator
