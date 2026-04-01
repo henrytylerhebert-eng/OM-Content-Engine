@@ -64,3 +64,6 @@ This runs the existing local pipeline flow, verifies the expected snapshot artif
 - `use_now` / `needs_review` / `hold` counts
 - assignment count
 - the first files to open
+- a next-step note when `use_now = 0`
+- a lightweight warning when duplicate-looking org/person story rows appear in the assignment queue
+- an Airtable sync readiness note based on the current environment variables
