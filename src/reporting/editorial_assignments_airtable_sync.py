@@ -209,6 +209,11 @@ def _write_sync_state(path: Path, state: dict[str, object]) -> None:
     path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
 
 
+def _write_sync_results(path: Path, payload: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
 def _summarize_counts(result_rows: Sequence[dict[str, object]]) -> dict[str, int]:
     counts = {
         "created": 0,
@@ -257,6 +262,58 @@ def render_sync_summary(sync_result: dict[str, object]) -> str:
     if results_file:
         lines.append("Results log: %s" % results_file)
     return "\n".join(lines)
+
+
+def _build_failed_sync_result(
+    *,
+    run_dir: Path,
+    source_file: Path,
+    results_path: Path,
+    state_path: Path,
+    error_message: str,
+    assignments: Optional[list[dict[str, object]]] = None,
+    force_overwrite: bool = False,
+    allow_overwrite_ids: Optional[Sequence[str]] = None,
+) -> dict[str, object]:
+    started_at = _utc_timestamp()
+    finished_at = _utc_timestamp()
+    return {
+        "sync_name": SYNC_NAME,
+        "status": "failed_preflight",
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "source_file": str(source_file),
+        "rows_read": len(assignments or []),
+        "run_dir": str(run_dir),
+        "editorial_assignments_table": os.getenv(
+            "AIRTABLE_EDITORIAL_ASSIGNMENTS_TABLE",
+            DEFAULT_EDITORIAL_ASSIGNMENTS_TABLE,
+        ),
+        "sync_logs_table": os.getenv(
+            "AIRTABLE_SYNC_LOGS_TABLE",
+            DEFAULT_SYNC_LOGS_TABLE,
+        ),
+        "force_overwrite": force_overwrite,
+        "allow_overwrite_ids": sorted(str(value) for value in (allow_overwrite_ids or [])),
+        "counts": {
+            "created": 0,
+            "updated": 0,
+            "unchanged": 0,
+            "skipped": 0,
+            "errors": 1,
+        },
+        "records": [
+            {
+                "assignment_id": "",
+                "action": "errors",
+                "record_id": "",
+                "reason": error_message,
+            }
+        ],
+        "state_file": str(state_path),
+        "results_file": str(results_path),
+        "error_message": error_message,
+    }
 
 
 class AirtableClient:
@@ -546,8 +603,7 @@ def sync_editorial_assignments(
         },
     )
 
-    results_path.parent.mkdir(parents=True, exist_ok=True)
-    results_path.write_text(json.dumps(sync_result, indent=2) + "\n", encoding="utf-8")
+    _write_sync_results(results_path, sync_result)
 
     log_fields = {
         "sync_name": SYNC_NAME,
@@ -565,7 +621,7 @@ def sync_editorial_assignments(
     }
     created_log = client.create_record(logs_table, log_fields)
     sync_result["sync_log_record_id"] = str(created_log.get("id") or "")
-    results_path.write_text(json.dumps(sync_result, indent=2) + "\n", encoding="utf-8")
+    _write_sync_results(results_path, sync_result)
     return sync_result
 
 
@@ -607,26 +663,40 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Allow local overwrite for a specific assignment_id without forcing every row.",
     )
     args = parser.parse_args(argv)
+    run_dir = Path(args.run_dir)
+    input_file = Path(args.input_file) if args.input_file else run_dir / OUTPUT_JSON_NAME
+    state_path = Path(args.state_file)
+    results_path = Path(args.results_file) if args.results_file else run_dir / DEFAULT_RESULTS_NAME
+    loaded_assignments: Optional[list[dict[str, object]]] = None
 
     try:
-        run_dir = Path(args.run_dir)
-        input_file = Path(args.input_file) if args.input_file else run_dir / OUTPUT_JSON_NAME
         if not input_file.exists():
             raise AirtableSyncError("Missing editorial assignments input file: %s" % input_file)
-
+        loaded_assignments = load_editorial_assignments(input_file)
         config = AirtableSyncConfig.from_env()
         client = AirtableClient(config)
         sync_result = sync_editorial_assignments(
-            load_editorial_assignments(input_file),
+            loaded_assignments,
             client=client,
             source_file=input_file,
             run_dir=run_dir,
-            state_path=Path(args.state_file),
-            results_path=Path(args.results_file) if args.results_file else None,
+            state_path=state_path,
+            results_path=results_path,
             force_overwrite=args.force_overwrite,
             allow_overwrite_ids=args.allow_overwrite_id,
         )
     except AirtableSyncError as exc:
+        failure_result = _build_failed_sync_result(
+            run_dir=run_dir,
+            source_file=input_file,
+            results_path=results_path,
+            state_path=state_path,
+            error_message=str(exc),
+            assignments=loaded_assignments,
+            force_overwrite=args.force_overwrite,
+            allow_overwrite_ids=args.allow_overwrite_id,
+        )
+        _write_sync_results(results_path, failure_result)
         print("Editorial Assignments Airtable Sync Failed", file=sys.stderr)
         print(str(exc), file=sys.stderr)
         return 1

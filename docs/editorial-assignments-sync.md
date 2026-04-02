@@ -230,14 +230,18 @@ That file should summarize:
 - source file path
 - run directory
 - target table name
+- sync status
 - started / finished timestamps
 - created count
 - updated count
 - unchanged count
 - skipped count
 - error count
+- error message when the sync did not run cleanly
 - explicit overwrite mode used or not
 - per-row result details with reasons
+
+If Airtable preflight fails, the sync should still refresh this local results file so the operator does not mistake a stale previous run for the current state.
 
 ### Airtable log row
 

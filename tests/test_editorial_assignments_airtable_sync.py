@@ -407,6 +407,8 @@ def test_missing_airtable_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 
     source_file = tmp_path / "editorial_assignments.json"
     source_file.write_text(json.dumps([_assignment()]), encoding="utf-8")
+    results_file = tmp_path / "editorial_assignments_sync_results.json"
+    results_file.write_text('{"marker":"stale"}\n', encoding="utf-8")
 
     monkeypatch.delenv("AIRTABLE_TOKEN", raising=False)
     monkeypatch.delenv("AIRTABLE_BASE_ID", raising=False)
@@ -420,6 +422,12 @@ def test_missing_airtable_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     assert result.exit_code != 0
     assert "Editorial Assignments Airtable Sync Failed" in result.output
     assert "Missing AIRTABLE_TOKEN" in result.output
+    refreshed = json.loads(results_file.read_text(encoding="utf-8"))
+    assert refreshed.get("marker") is None
+    assert refreshed["status"] == "failed_preflight"
+    assert refreshed["rows_read"] == 1
+    assert refreshed["error_message"] == "Missing AIRTABLE_TOKEN in the environment."
+    assert refreshed["results_file"] == str(results_file)
 
 
 def test_airtable_http_error_includes_base_table_and_diagnosis() -> None:
