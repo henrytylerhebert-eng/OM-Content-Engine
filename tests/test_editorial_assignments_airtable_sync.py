@@ -12,8 +12,11 @@ from urllib.error import HTTPError
 
 import pytest
 
+import src.reporting.editorial_assignments_airtable_sync as sync_module
 from src.reporting.editorial_assignments_airtable_sync import (
+    AIRTABLE_FIELD_NAMES,
     AirtableClient,
+    AirtablePreflightError,
     AirtableSyncConfig,
     AirtableSyncError,
     render_sync_summary,
@@ -51,8 +54,14 @@ def _assignment(**overrides: object) -> dict[str, object]:
 class FakeAirtableClient:
     """In-memory Airtable double for sync tests."""
 
-    def __init__(self, remote_records: Optional[list[dict[str, object]]] = None) -> None:
+    def __init__(
+        self,
+        remote_records: Optional[list[dict[str, object]]] = None,
+        *,
+        editorial_field_names: Optional[list[str]] = None,
+    ) -> None:
         self.config = SimpleNamespace(
+            base_id="appTestBase123",
             editorial_assignments_table="Editorial Assignments",
             sync_logs_table="Data Source Sync Logs",
         )
@@ -63,9 +72,36 @@ class FakeAirtableClient:
             }
             for record in remote_records or []
         }
+        self.editorial_field_names = list(editorial_field_names or AIRTABLE_FIELD_NAMES)
         self.log_records: list[dict[str, object]] = []
+        self.list_records_calls = 0
+        self.create_record_calls = 0
+        self.update_record_calls = 0
+        self.ensure_required_fields_calls = 0
+
+    def ensure_required_fields(self, table_name: str, *, required_fields: list[str]) -> None:
+        self.ensure_required_fields_calls += 1
+        if table_name != self.config.editorial_assignments_table:
+            raise AssertionError("Unexpected table name for preflight: %s" % table_name)
+        missing_fields = [field_name for field_name in required_fields if field_name not in self.editorial_field_names]
+        if missing_fields:
+            raise AirtablePreflightError(
+                "\n".join(
+                    [
+                        "Airtable sync preflight failed.",
+                        "Base ID: %s" % self.config.base_id,
+                        "Table: %s" % table_name,
+                        "Missing fields: %s" % ", ".join(missing_fields),
+                        "Add the missing Airtable field(s) and rerun sync.",
+                    ]
+                ),
+                missing_fields=missing_fields,
+                table_name=table_name,
+                base_id=self.config.base_id,
+            )
 
     def list_records(self, table_name: str, *, fields: list[str]) -> list[dict[str, object]]:
+        self.list_records_calls += 1
         if table_name == self.config.editorial_assignments_table:
             return list(self._records_by_id.values())
         if table_name == self.config.sync_logs_table:
@@ -73,6 +109,7 @@ class FakeAirtableClient:
         raise AssertionError("Unexpected table name: %s" % table_name)
 
     def create_record(self, table_name: str, fields: dict[str, object]) -> dict[str, object]:
+        self.create_record_calls += 1
         if table_name == self.config.sync_logs_table:
             record = {
                 "id": "log_%s" % (len(self.log_records) + 1),
@@ -89,6 +126,7 @@ class FakeAirtableClient:
         return record
 
     def update_record(self, table_name: str, record_id: str, fields: dict[str, object]) -> dict[str, object]:
+        self.update_record_calls += 1
         if table_name != self.config.editorial_assignments_table:
             raise AssertionError("Unexpected update table: %s" % table_name)
         existing_fields = dict(self._records_by_id[record_id]["fields"])
@@ -153,8 +191,21 @@ def test_sync_creates_new_airtable_assignment_and_log(tmp_path: Path) -> None:
     assert "person_name" not in created["fields"]
     assert "status" not in created["fields"]
     assert (tmp_path / "editorial_assignments_sync_results.json").exists()
+    assert (tmp_path / "editorial_assignments_sync_results.md").exists()
     state = json.loads((tmp_path / "state.json").read_text(encoding="utf-8"))
     assert state["records"]["assignment:needs_review:person_jane_acme_ai"]["record_id"] == created["id"]
+    record = result["records"][0]
+    assert record["status"] == "created"
+    assert record["airtable_record_id"] == created["id"]
+    assert record["reason_summary"] == "created in Airtable"
+    assert record["changed_machine_fields"] == []
+    assert result["summary"]["status_counts"]["created"] == 1
+    assert result["summary"]["rows_with_changed_machine_fields_count"] == 0
+    assert result["summary"]["top_skip_failure_reasons"] == []
+    markdown = (tmp_path / "editorial_assignments_sync_results.md").read_text(encoding="utf-8")
+    assert "# Editorial Assignments Sync Results" in markdown
+    assert "## Top Skip/Failure Reasons" in markdown
+    assert "## Top Changed Rows" in markdown
 
 
 def test_sync_ignores_human_managed_field_drift_without_explicit_overwrite(tmp_path: Path) -> None:
@@ -223,7 +274,12 @@ def test_sync_ignores_human_managed_field_drift_without_explicit_overwrite(tmp_p
     assert result["counts"]["skipped"] == 0
     assert result["counts"]["updated"] == 0
     assert result["counts"]["unchanged"] == 1
+    assert result["records"][0]["status"] == "unchanged"
+    assert result["records"][0]["airtable_record_id"] == "rec_1"
     assert result["records"][0]["reason"] == "already_matches_local_source"
+    assert result["records"][0]["reason_summary"] == "already matches local sync-owned fields"
+    assert result["records"][0]["changed_machine_fields"] == []
+    assert result["summary"]["status_counts"]["unchanged"] == 1
     assert client._records_by_id["rec_1"]["fields"]["assignment_status"] == "shipped"
     assert client._records_by_id["rec_1"]["fields"]["owner"] == "manual_owner"
     assert client._records_by_id["rec_1"]["fields"]["next_step"] == "manual_follow_up"
@@ -293,7 +349,21 @@ def test_sync_skips_remote_machine_managed_edit_without_explicit_overwrite(tmp_p
     )
 
     assert result["counts"]["skipped"] == 1
+    assert result["records"][0]["status"] == "skipped"
+    assert result["records"][0]["airtable_record_id"] == "rec_1"
     assert result["records"][0]["reason"] == "remote_fields_changed_since_last_sync"
+    assert result["records"][0]["reason_summary"] == "remote sync-owned fields changed since last sync"
+    assert result["records"][0]["changed_machine_fields"] == ["trust_basis"]
+    assert result["summary"]["status_counts"]["skipped"] == 1
+    assert result["summary"]["rows_with_changed_machine_fields_count"] == 1
+    assert result["summary"]["top_skip_failure_reasons"] == [
+        {
+            "status": "skipped",
+            "reason": "remote_fields_changed_since_last_sync",
+            "reason_summary": "remote sync-owned fields changed since last sync",
+            "count": 1,
+        }
+    ]
     assert client._records_by_id["rec_1"]["fields"]["trust_basis"] == "manual_override"
 
 
@@ -362,6 +432,23 @@ def test_sync_allows_per_assignment_overwrite_when_explicitly_requested(tmp_path
     )
 
     assert result["counts"]["updated"] == 1
+    assert result["records"][0]["status"] == "updated"
+    assert result["records"][0]["airtable_record_id"] == "rec_1"
+    assert result["records"][0]["reason_summary"] == "remote sync-owned fields updated"
+    assert result["records"][0]["changed_machine_fields"] == ["trust_basis"]
+    assert result["records"][0]["overwrite_used"] is True
+    assert result["summary"]["status_counts"]["updated"] == 1
+    assert result["summary"]["rows_with_changed_machine_fields_count"] == 1
+    assert result["summary"]["overwrite_used_count"] == 1
+    assert result["summary"]["top_changed_rows"] == [
+        {
+            "assignment_id": assignment["assignment_id"],
+            "status": "updated",
+            "airtable_record_id": "rec_1",
+            "changed_machine_fields": ["trust_basis"],
+            "reason_summary": "remote sync-owned fields updated",
+        }
+    ]
     assert client._records_by_id["rec_1"]["fields"]["trust_basis"] == "reviewed_truth"
     assert client._records_by_id["rec_1"]["fields"]["assignment_status"] == "shipped"
     assert client._records_by_id["rec_1"]["fields"]["owner"] == "manual_owner"
@@ -397,8 +484,49 @@ def test_sync_skips_existing_manual_airtable_row_without_state(tmp_path: Path) -
     )
 
     assert result["counts"]["skipped"] == 1
+    assert result["records"][0]["status"] == "skipped"
     assert result["records"][0]["reason"] == "existing_airtable_record_has_manual_values"
+    assert result["records"][0]["reason_summary"] == "existing Airtable row has manual values"
+    assert set(result["records"][0]["changed_machine_fields"]) == {
+        "recommended_action",
+        "source_hook",
+        "evidence_summary",
+        "suggested_angle",
+        "suggested_format",
+        "readiness_level",
+        "trust_basis",
+    }
     assert client._records_by_id["rec_1"]["fields"]["owner"] == "manual_owner"
+
+
+def test_sync_failed_row_reports_compact_reason(tmp_path: Path) -> None:
+    assignment = _assignment(assignment_id="")
+    source_file = tmp_path / "editorial_assignments.json"
+    source_file.write_text(json.dumps([assignment]), encoding="utf-8")
+    client = FakeAirtableClient()
+
+    result = sync_editorial_assignments(
+        [assignment],
+        client=client,
+        source_file=source_file,
+        run_dir=tmp_path,
+        state_path=tmp_path / "state.json",
+    )
+
+    assert result["counts"]["errors"] == 1
+    assert result["records"][0]["status"] == "failed"
+    assert result["records"][0]["reason"] == "missing_assignment_id"
+    assert result["records"][0]["reason_summary"] == "missing assignment_id in local row"
+    assert result["records"][0]["changed_machine_fields"] == []
+    assert result["summary"]["status_counts"]["failed"] == 1
+    assert result["summary"]["top_skip_failure_reasons"] == [
+        {
+            "status": "failed",
+            "reason": "missing_assignment_id",
+            "reason_summary": "missing assignment_id in local row",
+            "count": 1,
+        }
+    ]
 
 
 def test_sync_fails_on_duplicate_assignment_ids_in_airtable(tmp_path: Path) -> None:
@@ -433,6 +561,33 @@ def test_sync_fails_on_duplicate_assignment_ids_in_airtable(tmp_path: Path) -> N
     assert "Duplicate assignment_id rows found in Airtable table Editorial Assignments" in str(exc_info.value)
 
 
+def test_sync_preflight_fails_when_required_field_is_missing(tmp_path: Path) -> None:
+    assignment = _assignment()
+    client = FakeAirtableClient(editorial_field_names=[field for field in AIRTABLE_FIELD_NAMES if field != "recommended_action"])
+    source_file = tmp_path / "editorial_assignments.json"
+    source_file.write_text(json.dumps([assignment]), encoding="utf-8")
+
+    with pytest.raises(AirtablePreflightError) as exc_info:
+        sync_editorial_assignments(
+            [assignment],
+            client=client,
+            source_file=source_file,
+            run_dir=tmp_path,
+            state_path=tmp_path / "state.json",
+        )
+
+    message = str(exc_info.value)
+    assert "Airtable sync preflight failed." in message
+    assert "Base ID: appTestBase123" in message
+    assert "Table: Editorial Assignments" in message
+    assert "Missing fields: recommended_action" in message
+    assert "Add the missing Airtable field(s) and rerun sync." in message
+    assert client.ensure_required_fields_calls == 1
+    assert client.list_records_calls == 0
+    assert client.create_record_calls == 0
+    assert client.update_record_calls == 0
+
+
 def test_render_sync_summary_is_operator_facing() -> None:
     rendered = render_sync_summary(
         {
@@ -454,6 +609,77 @@ def test_render_sync_summary_is_operator_facing() -> None:
     assert "Rows read: 7" in rendered
     assert "Rows created: 2" in rendered
     assert "Destination table: Editorial Assignments" in rendered
+
+
+def test_sync_results_markdown_renders_expected_sections(tmp_path: Path) -> None:
+    assignment = _assignment(trust_basis="reviewed_truth")
+    remote_record = {
+        "id": "rec_1",
+        "fields": {
+            "assignment_id": assignment["assignment_id"],
+            "entity_id": "person:jane_acme_ai",
+            "org_name": "Acme AI",
+            "primary_person_name": "Jane Founder",
+            "bucket": "needs_review",
+            "brief_status": "planning_safe_only",
+            "readiness_level": "spotlight_ready",
+            "trust_basis": "manual_override",
+            "public_ready": "false",
+            "suggested_angle": "founder_journey",
+            "suggested_format": "mini_feature",
+            "recommended_action": "apply_reviewed_truth_override",
+            "owner": "manual_owner",
+            "assignment_status": "shipped",
+            "priority": "medium",
+            "target_cycle": "next_week",
+            "next_step": "manual_follow_up",
+            "blocking_notes": "Manual note",
+            "source_hook": "A founder story worth validating.",
+            "evidence_summary": "org_type=startup; founder; website",
+        },
+    }
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "records": {
+                    assignment["assignment_id"]: {
+                        "record_id": "rec_1",
+                        "last_synced_fields": {
+                            "recommended_action": "apply_reviewed_truth_override",
+                            "source_hook": "A founder story worth validating.",
+                            "evidence_summary": "org_type=startup; founder; website",
+                            "suggested_angle": "founder_journey",
+                            "suggested_format": "mini_feature",
+                            "readiness_level": "spotlight_ready",
+                            "trust_basis": "heuristic_only",
+                        },
+                        "synced_at": "2026-04-01T00:00:00Z",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    client = FakeAirtableClient([remote_record])
+    source_file = tmp_path / "editorial_assignments.json"
+    source_file.write_text(json.dumps([assignment]), encoding="utf-8")
+
+    sync_editorial_assignments(
+        [assignment],
+        client=client,
+        source_file=source_file,
+        run_dir=tmp_path,
+        state_path=state_path,
+    )
+
+    markdown = (tmp_path / "editorial_assignments_sync_results.md").read_text(encoding="utf-8")
+    assert "- Generated at:" in markdown
+    assert "## Top Skip/Failure Reasons" in markdown
+    assert "## Top Changed Rows" in markdown
+    assert "## Skipped Rows" in markdown
+    assert "remote sync-owned fields changed since last sync" in markdown
 
 
 def test_sync_rerun_is_idempotent(tmp_path: Path) -> None:
@@ -509,6 +735,96 @@ def test_missing_airtable_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     assert result.exit_code != 0
     assert "Editorial Assignments Airtable Sync Failed" in result.output
     assert "Missing AIRTABLE_TOKEN" in result.output
+
+
+def test_missing_airtable_fields_refresh_results_artifact_without_row_writes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    source_file = tmp_path / "editorial_assignments.json"
+    source_file.write_text(json.dumps([_assignment()]), encoding="utf-8")
+    results_file = tmp_path / "editorial_assignments_sync_results.json"
+    results_file.write_text('{"marker":"stale"}\n', encoding="utf-8")
+
+    class MissingFieldClient:
+        instances: list["MissingFieldClient"] = []
+
+        def __init__(self, config: AirtableSyncConfig) -> None:
+            self.config = config
+            self.list_records_calls = 0
+            self.create_record_calls = 0
+            self.update_record_calls = 0
+            MissingFieldClient.instances.append(self)
+
+        def ensure_required_fields(self, table_name: str, *, required_fields: list[str]) -> None:
+            raise AirtablePreflightError(
+                "\n".join(
+                    [
+                        "Airtable sync preflight failed.",
+                        "Base ID: %s" % self.config.base_id,
+                        "Table: %s" % table_name,
+                        "Missing fields: recommended_next_step",
+                        "Add the missing Airtable field(s) and rerun sync.",
+                    ]
+                ),
+                missing_fields=["recommended_next_step"],
+                table_name=table_name,
+                base_id=self.config.base_id,
+            )
+
+        def list_records(self, table_name: str, *, fields: list[str]) -> list[dict[str, object]]:
+            self.list_records_calls += 1
+            return []
+
+        def create_record(self, table_name: str, fields: dict[str, object]) -> dict[str, object]:
+            self.create_record_calls += 1
+            return {"id": "rec_unused", "fields": dict(fields)}
+
+        def update_record(self, table_name: str, record_id: str, fields: dict[str, object]) -> dict[str, object]:
+            self.update_record_calls += 1
+            return {"id": record_id, "fields": dict(fields)}
+
+    monkeypatch.setenv("AIRTABLE_TOKEN", "test-token")
+    monkeypatch.setenv("AIRTABLE_BASE_ID", "appMissingFields123")
+    monkeypatch.setattr(sync_module, "AirtableClient", MissingFieldClient)
+
+    exit_code = sync_module.main(
+        [
+            "--run-dir", str(tmp_path),
+            "--input-file", str(source_file),
+            "--results-file", str(results_file),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "Editorial Assignments Airtable Sync Failed" in captured.err
+    assert "Missing fields: recommended_next_step" in captured.err
+    refreshed = json.loads(results_file.read_text(encoding="utf-8"))
+    assert refreshed.get("marker") is None
+    assert refreshed["status"] == "failed_preflight"
+    assert refreshed["rows_read"] == 1
+    assert refreshed["base_id"] == "appMissingFields123"
+    assert refreshed["editorial_assignments_table"] == "Editorial Assignments"
+    assert refreshed["missing_fields"] == ["recommended_next_step"]
+    assert "recommended_next_step" in refreshed["error_message"]
+    assert refreshed["summary"]["status_counts"]["failed"] == 0
+    assert refreshed["summary"]["top_skip_failure_reasons"] == [
+        {
+            "status": "failed",
+            "reason": "preflight_failed",
+            "reason_summary": refreshed["error_message"],
+            "count": 1,
+        }
+    ]
+    markdown = (tmp_path / "editorial_assignments_sync_results.md").read_text(encoding="utf-8")
+    assert "- Sync status: `failed_preflight`" in markdown
+    assert "- Missing fields: `recommended_next_step`" in markdown
+    client = MissingFieldClient.instances[0]
+    assert client.list_records_calls == 0
+    assert client.create_record_calls == 0
+    assert client.update_record_calls == 0
 
 
 def test_airtable_http_error_includes_base_table_and_diagnosis() -> None:

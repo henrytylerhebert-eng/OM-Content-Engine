@@ -172,10 +172,12 @@ Upsert key:
 Expected behavior:
 
 1. Read the local `editorial_assignments.json` file.
-2. For each row, find the Airtable record with the same `assignment_id`.
-3. If no Airtable record exists, create one.
-4. If a record exists and its machine-managed sync fields still match the last known synced state, update only that sync-owned subset from the local output.
-5. If a record exists and those sync-owned fields appear to have been changed manually in Airtable since the last sync, skip it unless explicit overwrite is allowed.
+2. Run a lightweight preflight field check against the destination `Editorial Assignments` table before any row writes.
+3. If required Airtable fields are missing, fail preflight cleanly, list the missing fields, refresh the local sync results artifact, and stop.
+4. For each row, find the Airtable record with the same `assignment_id`.
+5. If no Airtable record exists, create one.
+6. If a record exists and its machine-managed sync fields still match the last known synced state, update only that sync-owned subset from the local output.
+7. If a record exists and those sync-owned fields appear to have been changed manually in Airtable since the last sync, skip it unless explicit overwrite is allowed.
 
 This keeps Airtable useful for visibility without turning it into a second system of truth.
 
@@ -233,6 +235,13 @@ Skips are not the same as failures.
 
 A skipped row means the contract protected a manual edit or caught an ambiguity.
 
+Preflight failures should be especially clear for operators. When required Airtable fields are missing, the error should name:
+
+- the base id
+- the destination table
+- the missing field names
+- the next action: `Add the missing Airtable field(s) and rerun sync.`
+
 ## 7. Operator-Facing Sync Results
 
 Each sync should produce two summaries:
@@ -248,14 +257,63 @@ That file should summarize:
 - source file path
 - run directory
 - target table name
+- generated timestamp
 - started / finished timestamps
 - created count
 - updated count
 - unchanged count
 - skipped count
 - error count
+- sync status when preflight fails
+- error message when preflight fails
+- missing Airtable fields when preflight fails
 - explicit overwrite mode used or not
-- per-row result details with reasons
+- aggregate summary details including:
+  - `status_counts`
+  - `rows_with_changed_machine_fields_count`
+  - `overwrite_used_count`
+  - `skipped_row_count`
+  - `top_skip_failure_reasons`
+  - `top_changed_rows`
+- per-row result details including:
+  - `assignment_id`
+  - row `status`
+  - compact `reason` and `reason_summary`
+  - `airtable_record_id` when available
+  - `changed_machine_fields`
+  - `overwrite_used`
+
+Per-row status values are:
+
+- `created`
+- `updated`
+- `unchanged`
+- `skipped`
+- `failed`
+
+Interpretation:
+
+- updated rows show which sync-owned fields were patched
+- skipped rows show which sync-owned fields differed when that can be determined
+- unchanged rows still include a clean reason so the steady-state output is easy to inspect
+
+Optionally write a small markdown companion next to the JSON file, for example:
+
+- `data/processed/local_run/editorial_assignments_sync_results.md`
+
+Use the markdown file only for quick scanning. The JSON file stays the source of truth.
+
+If preflight fails before row sync begins, the local results artifact should still be refreshed so it does not leave stale success-looking output from a prior run.
+
+Recommended markdown sections:
+
+- generated / source overview
+- aggregate counts
+- top skip / failure reasons
+- top changed rows
+- updated rows
+- skipped rows
+- failed rows
 
 ### Airtable log row
 
@@ -268,7 +326,7 @@ The operator-facing summary should make it obvious:
 - what source file was synced
 - whether Airtable was only updated, not trusted
 - how many rows were created, updated, unchanged, skipped, or failed
-- which rows were skipped and why
+- which rows were updated, skipped, or failed and why
 
 The sync should also keep one local sync-state file for conflict protection:
 
