@@ -31,7 +31,19 @@ It is not allowed to:
 
 Table: `Editorial Assignments`
 
-The sync contract mirrors these Airtable fields directly from the local assignment output:
+The table may contain the full local assignment shape, but routine sync updates only manage the machine-owned recommendation and evidence fields on existing Airtable rows:
+
+- `recommended_action`
+- `source_hook`
+- `evidence_summary`
+- `suggested_angle`
+- `suggested_format`
+- `readiness_level`
+- `trust_basis`
+
+Those are the only fields included in routine Airtable PATCH updates and in conflict detection against prior sync state.
+
+The local assignment output still contains the broader row shape:
 
 - `assignment_id`
 - `entity_id`
@@ -55,6 +67,12 @@ The sync contract mirrors these Airtable fields directly from the local assignme
 - `evidence_summary`
 
 Use the same Airtable field names as the local assignment output.
+
+Practical effect:
+
+- create path: a missing Airtable row is still seeded from the local assignment output
+- update path: only the machine-owned recommendation/evidence fields are patched
+- human-managed execution fields such as `owner`, `assignment_status`, `priority`, `target_cycle`, `next_step`, and `blocking_notes` are left alone on routine reruns
 
 Exact field mapping:
 
@@ -156,8 +174,8 @@ Expected behavior:
 1. Read the local `editorial_assignments.json` file.
 2. For each row, find the Airtable record with the same `assignment_id`.
 3. If no Airtable record exists, create one.
-4. If a record exists and still matches the last known synced state, update it from the local output.
-5. If a record exists and appears to have been changed manually in Airtable since the last sync, skip it unless explicit overwrite is allowed.
+4. If a record exists and its machine-managed sync fields still match the last known synced state, update only that sync-owned subset from the local output.
+5. If a record exists and those sync-owned fields appear to have been changed manually in Airtable since the last sync, skip it unless explicit overwrite is allowed.
 
 This keeps Airtable useful for visibility without turning it into a second system of truth.
 

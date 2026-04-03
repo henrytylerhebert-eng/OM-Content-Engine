@@ -52,7 +52,21 @@ ASSIGNMENT_FIELD_MAP = {
     "source_hook": "source_hook",
     "evidence_summary": "evidence_summary",
 }
-SYNC_FIELD_NAMES = list(ASSIGNMENT_FIELD_MAP.values())
+PATCH_FIELD_NAMES = (
+    "recommended_action",
+    "source_hook",
+    "evidence_summary",
+    "suggested_angle",
+    "suggested_format",
+    "readiness_level",
+    "trust_basis",
+)
+PATCH_FIELD_MAP = {
+    local_field: airtable_field
+    for local_field, airtable_field in ASSIGNMENT_FIELD_MAP.items()
+    if airtable_field in PATCH_FIELD_NAMES
+}
+AIRTABLE_FIELD_NAMES = list(ASSIGNMENT_FIELD_MAP.values())
 
 
 class AirtableSyncError(RuntimeError):
@@ -169,16 +183,20 @@ def _stringify_field_value(field_name: str, value: object) -> str:
     return str(value or "").strip()
 
 
-def _build_airtable_fields(assignment: dict[str, object]) -> dict[str, str]:
+def _build_airtable_fields(
+    assignment: dict[str, object],
+    *,
+    field_map: Optional[dict[str, str]] = None,
+) -> dict[str, str]:
     fields: dict[str, str] = {}
-    for local_field, airtable_field in ASSIGNMENT_FIELD_MAP.items():
+    for local_field, airtable_field in (field_map or ASSIGNMENT_FIELD_MAP).items():
         fields[airtable_field] = _stringify_field_value(local_field, assignment.get(local_field))
     return fields
 
 
-def _normalize_remote_fields(fields: dict[str, object]) -> dict[str, str]:
+def _normalize_remote_fields(fields: dict[str, object], *, field_names: Sequence[str]) -> dict[str, str]:
     normalized: dict[str, str] = {}
-    for name in SYNC_FIELD_NAMES:
+    for name in field_names:
         value = fields.get(name)
         if isinstance(value, bool):
             normalized[name] = "true" if value else "false"
@@ -364,7 +382,7 @@ def _build_remote_lookup(records: Sequence[dict[str, object]]) -> tuple[dict[str
     by_assignment_id: dict[str, dict[str, object]] = {}
     duplicates: set[str] = set()
     for record in records:
-        fields = _normalize_remote_fields(dict(record.get("fields", {})))
+        fields = _normalize_remote_fields(dict(record.get("fields", {})), field_names=AIRTABLE_FIELD_NAMES)
         assignment_id = fields.get("assignment_id", "")
         if not assignment_id:
             continue
@@ -408,7 +426,7 @@ def sync_editorial_assignments(
     state = _load_sync_state(state_path)
     state_records = dict(state.get("records", {}))
 
-    remote_records = client.list_records(editorial_table, fields=SYNC_FIELD_NAMES)
+    remote_records = client.list_records(editorial_table, fields=AIRTABLE_FIELD_NAMES)
     remote_lookup, duplicate_assignment_ids = _build_remote_lookup(remote_records)
     if duplicate_assignment_ids:
         raise AirtableSyncError(
@@ -420,7 +438,9 @@ def sync_editorial_assignments(
     next_state_records = dict(state_records)
 
     for assignment in assignments:
-        desired_fields = _build_airtable_fields(dict(assignment))
+        assignment_fields = dict(assignment)
+        desired_fields = _build_airtable_fields(assignment_fields)
+        desired_patch_fields = _build_airtable_fields(assignment_fields, field_map=PATCH_FIELD_MAP)
         assignment_id = desired_fields["assignment_id"]
         if not assignment_id:
             result_rows.append(
@@ -447,7 +467,7 @@ def sync_editorial_assignments(
             remote_lookup[assignment_id] = dict(created)
             next_state_records[assignment_id] = {
                 "record_id": record_id,
-                "last_synced_fields": desired_fields,
+                "last_synced_fields": desired_patch_fields,
                 "synced_at": _utc_timestamp(),
             }
             result_rows.append(
@@ -461,11 +481,18 @@ def sync_editorial_assignments(
             continue
 
         record_id = str(remote_record.get("id") or "")
-        remote_fields = _normalize_remote_fields(dict(remote_record.get("fields", {})))
-        if remote_fields == desired_fields:
+        remote_fields = _normalize_remote_fields(
+            dict(remote_record.get("fields", {})),
+            field_names=AIRTABLE_FIELD_NAMES,
+        )
+        remote_patch_fields = _normalize_remote_fields(
+            dict(remote_record.get("fields", {})),
+            field_names=PATCH_FIELD_NAMES,
+        )
+        if remote_patch_fields == desired_patch_fields:
             next_state_records[assignment_id] = {
                 "record_id": record_id,
-                "last_synced_fields": desired_fields,
+                "last_synced_fields": desired_patch_fields,
                 "synced_at": _utc_timestamp(),
             }
             result_rows.append(
@@ -478,8 +505,11 @@ def sync_editorial_assignments(
             )
             continue
 
-        last_synced_fields = _normalize_remote_fields(dict(state_record.get("last_synced_fields", {})))
-        if state_record and last_synced_fields != remote_fields and not overwrite_allowed:
+        last_synced_fields = _normalize_remote_fields(
+            dict(state_record.get("last_synced_fields", {})),
+            field_names=PATCH_FIELD_NAMES,
+        )
+        if state_record and last_synced_fields != remote_patch_fields and not overwrite_allowed:
             result_rows.append(
                 {
                     "assignment_id": assignment_id,
@@ -501,11 +531,11 @@ def sync_editorial_assignments(
             )
             continue
 
-        updated = client.update_record(editorial_table, record_id, desired_fields)
+        updated = client.update_record(editorial_table, record_id, desired_patch_fields)
         remote_lookup[assignment_id] = dict(updated)
         next_state_records[assignment_id] = {
             "record_id": str(updated.get("id") or record_id),
-            "last_synced_fields": desired_fields,
+            "last_synced_fields": desired_patch_fields,
             "synced_at": _utc_timestamp(),
         }
         result_rows.append(

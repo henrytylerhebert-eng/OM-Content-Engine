@@ -91,9 +91,11 @@ class FakeAirtableClient:
     def update_record(self, table_name: str, record_id: str, fields: dict[str, object]) -> dict[str, object]:
         if table_name != self.config.editorial_assignments_table:
             raise AssertionError("Unexpected update table: %s" % table_name)
+        existing_fields = dict(self._records_by_id[record_id]["fields"])
+        existing_fields.update(fields)
         record = {
             "id": record_id,
-            "fields": dict(fields),
+            "fields": existing_fields,
         }
         self._records_by_id[record_id] = record
         return record
@@ -155,21 +157,31 @@ def test_sync_creates_new_airtable_assignment_and_log(tmp_path: Path) -> None:
     assert state["records"]["assignment:needs_review:person_jane_acme_ai"]["record_id"] == created["id"]
 
 
-def test_sync_skips_remote_manual_edit_without_explicit_overwrite(tmp_path: Path) -> None:
-    assignment = _assignment(assignment_status="in_progress")
+def test_sync_ignores_human_managed_field_drift_without_explicit_overwrite(tmp_path: Path) -> None:
+    assignment = _assignment(assignment_status="in_progress", owner="tylerhebert")
     remote_record = {
         "id": "rec_1",
         "fields": {
             "assignment_id": assignment["assignment_id"],
+            "entity_id": "person:jane_acme_ai",
             "org_name": "Acme AI",
             "primary_person_name": "Jane Founder",
             "bucket": "needs_review",
-            "owner": "",
+            "brief_status": "planning_safe_only",
+            "readiness_level": "spotlight_ready",
+            "trust_basis": "heuristic_only",
+            "public_ready": "false",
+            "suggested_angle": "founder_journey",
+            "suggested_format": "mini_feature",
+            "recommended_action": "apply_reviewed_truth_override",
+            "owner": "manual_owner",
             "assignment_status": "shipped",
             "priority": "medium",
             "target_cycle": "next_week",
-            "next_step": "draft_feature",
-            "blocking_notes": "",
+            "next_step": "manual_follow_up",
+            "blocking_notes": "Manual note",
+            "source_hook": "A founder story worth validating.",
+            "evidence_summary": "org_type=startup; founder; website",
         },
     }
     state_path = tmp_path / "state.json"
@@ -181,16 +193,85 @@ def test_sync_skips_remote_manual_edit_without_explicit_overwrite(tmp_path: Path
                     assignment["assignment_id"]: {
                         "record_id": "rec_1",
                         "last_synced_fields": {
-                            "assignment_id": assignment["assignment_id"],
-                            "org_name": "Acme AI",
-                            "primary_person_name": "Jane Founder",
-                            "bucket": "needs_review",
-                            "owner": "",
-                            "assignment_status": "not_started",
-                            "priority": "medium",
-                            "target_cycle": "next_week",
-                            "next_step": "apply_reviewed_truth_override",
-                            "blocking_notes": "",
+                            "recommended_action": "apply_reviewed_truth_override",
+                            "source_hook": "A founder story worth validating.",
+                            "evidence_summary": "org_type=startup; founder; website",
+                            "suggested_angle": "founder_journey",
+                            "suggested_format": "mini_feature",
+                            "readiness_level": "spotlight_ready",
+                            "trust_basis": "heuristic_only",
+                        },
+                        "synced_at": "2026-04-01T00:00:00Z",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    client = FakeAirtableClient([remote_record])
+    source_file = tmp_path / "editorial_assignments.json"
+    source_file.write_text(json.dumps([assignment]), encoding="utf-8")
+
+    result = sync_editorial_assignments(
+        [assignment],
+        client=client,
+        source_file=source_file,
+        run_dir=tmp_path,
+        state_path=state_path,
+    )
+
+    assert result["counts"]["skipped"] == 0
+    assert result["counts"]["updated"] == 0
+    assert result["counts"]["unchanged"] == 1
+    assert result["records"][0]["reason"] == "already_matches_local_source"
+    assert client._records_by_id["rec_1"]["fields"]["assignment_status"] == "shipped"
+    assert client._records_by_id["rec_1"]["fields"]["owner"] == "manual_owner"
+    assert client._records_by_id["rec_1"]["fields"]["next_step"] == "manual_follow_up"
+
+
+def test_sync_skips_remote_machine_managed_edit_without_explicit_overwrite(tmp_path: Path) -> None:
+    assignment = _assignment(trust_basis="reviewed_truth")
+    remote_record = {
+        "id": "rec_1",
+        "fields": {
+            "assignment_id": assignment["assignment_id"],
+            "entity_id": "person:jane_acme_ai",
+            "org_name": "Acme AI",
+            "primary_person_name": "Jane Founder",
+            "bucket": "needs_review",
+            "brief_status": "planning_safe_only",
+            "readiness_level": "spotlight_ready",
+            "trust_basis": "manual_override",
+            "public_ready": "false",
+            "suggested_angle": "founder_journey",
+            "suggested_format": "mini_feature",
+            "recommended_action": "apply_reviewed_truth_override",
+            "owner": "manual_owner",
+            "assignment_status": "shipped",
+            "priority": "medium",
+            "target_cycle": "next_week",
+            "next_step": "manual_follow_up",
+            "blocking_notes": "Manual note",
+            "source_hook": "A founder story worth validating.",
+            "evidence_summary": "org_type=startup; founder; website",
+        },
+    }
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "records": {
+                    assignment["assignment_id"]: {
+                        "record_id": "rec_1",
+                        "last_synced_fields": {
+                            "recommended_action": "apply_reviewed_truth_override",
+                            "source_hook": "A founder story worth validating.",
+                            "evidence_summary": "org_type=startup; founder; website",
+                            "suggested_angle": "founder_journey",
+                            "suggested_format": "mini_feature",
+                            "readiness_level": "spotlight_ready",
+                            "trust_basis": "heuristic_only",
                         },
                         "synced_at": "2026-04-01T00:00:00Z",
                     }
@@ -213,24 +294,34 @@ def test_sync_skips_remote_manual_edit_without_explicit_overwrite(tmp_path: Path
 
     assert result["counts"]["skipped"] == 1
     assert result["records"][0]["reason"] == "remote_fields_changed_since_last_sync"
-    assert client._records_by_id["rec_1"]["fields"]["assignment_status"] == "shipped"
+    assert client._records_by_id["rec_1"]["fields"]["trust_basis"] == "manual_override"
 
 
 def test_sync_allows_per_assignment_overwrite_when_explicitly_requested(tmp_path: Path) -> None:
-    assignment = _assignment(assignment_status="in_progress", owner="tylerhebert")
+    assignment = _assignment(trust_basis="reviewed_truth", assignment_status="in_progress", owner="tylerhebert")
     remote_record = {
         "id": "rec_1",
         "fields": {
             "assignment_id": assignment["assignment_id"],
+            "entity_id": "person:jane_acme_ai",
             "org_name": "Acme AI",
             "primary_person_name": "Jane Founder",
             "bucket": "needs_review",
-            "owner": "",
+            "brief_status": "planning_safe_only",
+            "readiness_level": "spotlight_ready",
+            "trust_basis": "manual_override",
+            "public_ready": "false",
+            "suggested_angle": "founder_journey",
+            "suggested_format": "mini_feature",
+            "recommended_action": "apply_reviewed_truth_override",
+            "owner": "manual_owner",
             "assignment_status": "shipped",
             "priority": "medium",
             "target_cycle": "next_week",
-            "next_step": "draft_feature",
-            "blocking_notes": "",
+            "next_step": "manual_follow_up",
+            "blocking_notes": "Manual note",
+            "source_hook": "A founder story worth validating.",
+            "evidence_summary": "org_type=startup; founder; website",
         },
     }
     state_path = tmp_path / "state.json"
@@ -242,16 +333,13 @@ def test_sync_allows_per_assignment_overwrite_when_explicitly_requested(tmp_path
                     assignment["assignment_id"]: {
                         "record_id": "rec_1",
                         "last_synced_fields": {
-                            "assignment_id": assignment["assignment_id"],
-                            "org_name": "Acme AI",
-                            "primary_person_name": "Jane Founder",
-                            "bucket": "needs_review",
-                            "owner": "",
-                            "assignment_status": "not_started",
-                            "priority": "medium",
-                            "target_cycle": "next_week",
-                            "next_step": "apply_reviewed_truth_override",
-                            "blocking_notes": "",
+                            "recommended_action": "apply_reviewed_truth_override",
+                            "source_hook": "A founder story worth validating.",
+                            "evidence_summary": "org_type=startup; founder; website",
+                            "suggested_angle": "founder_journey",
+                            "suggested_format": "mini_feature",
+                            "readiness_level": "spotlight_ready",
+                            "trust_basis": "heuristic_only",
                         },
                         "synced_at": "2026-04-01T00:00:00Z",
                     }
@@ -274,8 +362,9 @@ def test_sync_allows_per_assignment_overwrite_when_explicitly_requested(tmp_path
     )
 
     assert result["counts"]["updated"] == 1
-    assert client._records_by_id["rec_1"]["fields"]["assignment_status"] == "in_progress"
-    assert client._records_by_id["rec_1"]["fields"]["owner"] == "tylerhebert"
+    assert client._records_by_id["rec_1"]["fields"]["trust_basis"] == "reviewed_truth"
+    assert client._records_by_id["rec_1"]["fields"]["assignment_status"] == "shipped"
+    assert client._records_by_id["rec_1"]["fields"]["owner"] == "manual_owner"
 
 
 def test_sync_skips_existing_manual_airtable_row_without_state(tmp_path: Path) -> None:
