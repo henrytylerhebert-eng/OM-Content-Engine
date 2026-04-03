@@ -130,6 +130,7 @@ def test_sync_creates_new_airtable_assignment_and_log(tmp_path: Path) -> None:
     assert result["counts"]["created"] == 1
     assert result["counts"]["skipped"] == 0
     assert len(client.log_records) == 1
+    log_record = client.log_records[0]
     created = next(iter(client._records_by_id.values()))
     assert created["fields"]["assignment_id"] == "assignment:needs_review:person_jane_acme_ai"
     assert created["fields"]["entity_id"] == "person:jane_acme_ai"
@@ -150,6 +151,16 @@ def test_sync_creates_new_airtable_assignment_and_log(tmp_path: Path) -> None:
     assert created["fields"]["assignment_status"] == "not_started"
     assert "person_name" not in created["fields"]
     assert "status" not in created["fields"]
+    assert log_record["fields"]["run_dir"] == str(tmp_path)
+    assert log_record["fields"]["status"] == "success"
+    assert log_record["fields"]["created_count"] == 1
+    assert log_record["fields"]["updated_count"] == 0
+    assert log_record["fields"]["unchanged_count"] == 0
+    assert log_record["fields"]["skipped_count"] == 0
+    assert log_record["fields"]["error_count"] == 0
+    assert log_record["fields"]["error_message"] == ""
+    assert log_record["fields"]["started_at"]
+    assert log_record["fields"]["finished_at"]
     assert (tmp_path / "editorial_assignments_sync_results.json").exists()
     state = json.loads((tmp_path / "state.json").read_text(encoding="utf-8"))
     assert state["records"]["assignment:needs_review:person_jane_acme_ai"]["record_id"] == created["id"]
@@ -214,6 +225,13 @@ def test_sync_skips_remote_manual_edit_without_explicit_overwrite(tmp_path: Path
     assert result["counts"]["skipped"] == 1
     assert result["records"][0]["reason"] == "remote_fields_changed_since_last_sync"
     assert client._records_by_id["rec_1"]["fields"]["assignment_status"] == "shipped"
+    assert len(client.log_records) == 1
+    assert client.log_records[0]["fields"]["status"] == "completed_with_errors"
+    assert client.log_records[0]["fields"]["skipped_count"] == 1
+    assert (
+        client.log_records[0]["fields"]["error_message"]
+        == "remote_fields_changed_since_last_sync"
+    )
 
 
 def test_sync_allows_per_assignment_overwrite_when_explicitly_requested(tmp_path: Path) -> None:
@@ -403,7 +421,7 @@ def test_sync_rerun_is_idempotent(tmp_path: Path) -> None:
 
 
 def test_missing_airtable_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """The CLI must fail cleanly when Airtable config is missing."""
+    """The CLI must skip gracefully when Airtable config is missing."""
 
     source_file = tmp_path / "editorial_assignments.json"
     source_file.write_text(json.dumps([_assignment()]), encoding="utf-8")
@@ -417,9 +435,10 @@ def test_missing_airtable_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         env=os.environ.copy(),
     )
 
-    assert result.exit_code != 0
-    assert "Editorial Assignments Airtable Sync Failed" in result.output
-    assert "Missing AIRTABLE_TOKEN" in result.output
+    assert result.exit_code == 0
+    assert "AIRTABLE SYNC PREFLIGHT CHECK" in result.output
+    assert "AIRTABLE_TOKEN" in result.output
+    assert "Sync skipped" in result.output
 
 
 def test_airtable_http_error_includes_base_table_and_diagnosis() -> None:

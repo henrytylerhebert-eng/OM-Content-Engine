@@ -238,6 +238,18 @@ def _log_notes(result_rows: Sequence[dict[str, object]]) -> str:
     return " | ".join(notes)
 
 
+def _log_error_message(result_rows: Sequence[dict[str, object]]) -> str:
+    problem_rows = [
+        row
+        for row in result_rows
+        if row.get("action") in {"errors", "skipped"} and row.get("reason")
+    ]
+    if not problem_rows:
+        return ""
+    reasons = [str(row.get("reason") or "").strip() for row in problem_rows[:3]]
+    return "; ".join(reason for reason in reasons if reason)
+
+
 def render_sync_summary(sync_result: dict[str, object]) -> str:
     """Render a compact operator-facing sync summary."""
 
@@ -520,6 +532,7 @@ def sync_editorial_assignments(
     counts = _summarize_counts(result_rows)
     finished_at = _utc_timestamp()
     notes = _log_notes(result_rows)
+    error_message = _log_error_message(result_rows)
 
     sync_result = {
         "sync_name": SYNC_NAME,
@@ -552,6 +565,7 @@ def sync_editorial_assignments(
     log_fields = {
         "sync_name": SYNC_NAME,
         "source_file_path": str(source_file),
+        "run_dir": str(run_dir),
         "started_at": started_at,
         "finished_at": finished_at,
         "status": "completed_with_errors" if counts["errors"] or counts["skipped"] else "success",
@@ -560,6 +574,7 @@ def sync_editorial_assignments(
         "unchanged_count": counts["unchanged"],
         "skipped_count": counts["skipped"],
         "error_count": counts["errors"],
+        "error_message": error_message,
         "force_overwrite": "yes" if force_overwrite else "no",
         "notes": notes,
     }
@@ -567,6 +582,65 @@ def sync_editorial_assignments(
     sync_result["sync_log_record_id"] = str(created_log.get("id") or "")
     results_path.write_text(json.dumps(sync_result, indent=2) + "\n", encoding="utf-8")
     return sync_result
+
+
+def preflight_check() -> list[str]:
+    """Verify Airtable sync prerequisites and return a list of warnings.
+
+    Returns an empty list when everything looks good.
+    """
+
+    warnings: list[str] = []
+
+    token = os.getenv("AIRTABLE_TOKEN", "").strip()
+    base_id = os.getenv("AIRTABLE_BASE_ID", "").strip()
+
+    if not token:
+        warnings.append("AIRTABLE_TOKEN is not set in the environment.")
+    if not base_id:
+        warnings.append("AIRTABLE_BASE_ID is not set in the environment.")
+
+    editorial_table = os.getenv(
+        "AIRTABLE_EDITORIAL_ASSIGNMENTS_TABLE",
+        "Editorial Assignments",
+    ).strip()
+    sync_logs_table = os.getenv(
+        "AIRTABLE_SYNC_LOGS_TABLE",
+        "Data Source Sync Logs",
+    ).strip()
+
+    if not editorial_table:
+        warnings.append(
+            "AIRTABLE_EDITORIAL_ASSIGNMENTS_TABLE is set but empty. "
+            "Expected a table name like 'Editorial Assignments'."
+        )
+    if not sync_logs_table:
+        warnings.append(
+            "AIRTABLE_SYNC_LOGS_TABLE is set but empty. "
+            "Expected a table name like 'Data Source Sync Logs'."
+        )
+
+    return warnings
+
+
+def render_preflight_warnings(warnings: list[str]) -> str:
+    """Format preflight warnings into a readable console message."""
+
+    lines = [
+        "─" * 52,
+        "AIRTABLE SYNC PREFLIGHT CHECK",
+        "─" * 52,
+    ]
+    for i, warning in enumerate(warnings, 1):
+        lines.append("  %d. %s" % (i, warning))
+    lines.append("")
+    lines.append("Sync skipped. Fix the above and re-run.")
+    lines.append(
+        "Hint: export AIRTABLE_TOKEN='pat...' and AIRTABLE_BASE_ID='app...' "
+        "before running the sync."
+    )
+    lines.append("─" * 52)
+    return "\n".join(lines)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -607,6 +681,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Allow local overwrite for a specific assignment_id without forcing every row.",
     )
     args = parser.parse_args(argv)
+
+    # ── Preflight: bail gracefully if Airtable is not configured ──
+    preflight_warnings = preflight_check()
+    if preflight_warnings:
+        print(render_preflight_warnings(preflight_warnings))
+        return 0
 
     try:
         run_dir = Path(args.run_dir)

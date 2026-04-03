@@ -132,6 +132,7 @@ Recommended `Data Source Sync Logs` table shape:
 
 - `sync_name`
 - `source_file_path`
+- `run_dir`
 - `started_at`
 - `finished_at`
 - `status`
@@ -140,10 +141,12 @@ Recommended `Data Source Sync Logs` table shape:
 - `unchanged_count`
 - `skipped_count`
 - `error_count`
+- `error_message`
 - `force_overwrite`
 - `notes`
 
 The log table is for run visibility only. It must not become a workflow queue.
+Keep `error_message` blank on clean success. On `completed_with_errors` runs, it should carry a short example of the skipped/error reasons from that sync.
 
 ## 3. Upsert Behavior
 

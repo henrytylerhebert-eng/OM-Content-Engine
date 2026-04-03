@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -56,6 +57,31 @@ def verify_expected_outputs(run_dir: Path) -> list[Path]:
     return paths
 
 
+def _collect_attention_items(assignments: list[dict[str, object]]) -> list[dict[str, str]]:
+    """Return the top 3 assignments needing attention, blocking items first."""
+
+    needs_review = [
+        a for a in assignments if str(a.get("bucket", "")) == "needs_review"
+    ]
+    with_blockers = [
+        a for a in needs_review if str(a.get("blocking_notes", "")).strip()
+    ]
+    without_blockers = [
+        a for a in needs_review if not str(a.get("blocking_notes", "")).strip()
+    ]
+    ranked = with_blockers + without_blockers
+
+    items: list[dict[str, str]] = []
+    for a in ranked[:3]:
+        person = str(a.get("primary_person_name") or "unknown")
+        org = str(a.get("org_name") or "")
+        label = "%s (%s)" % (person, org) if org else person
+        next_step = str(a.get("next_step") or "")
+        blocking = str(a.get("blocking_notes") or "")
+        items.append({"label": label, "next_step": next_step, "blocking": blocking})
+    return items
+
+
 def build_weekly_run_summary(run_dir: Path) -> dict[str, object]:
     """Build the compact operator summary from the generated run outputs."""
 
@@ -65,6 +91,17 @@ def build_weekly_run_summary(run_dir: Path) -> dict[str, object]:
     assignments = list(_load_json(run_dir / "editorial_assignments.json"))
 
     bucket_counts = dict(editorial_plan.get("bucket_counts", {}))
+
+    # Assignment status distribution.
+    status_dist: dict[str, int] = {}
+    for a in assignments:
+        status = str(a.get("assignment_status") or "unknown")
+        status_dist[status] = status_dist.get(status, 0) + 1
+
+    # Airtable sync env-var readiness.
+    has_token = bool(os.environ.get("AIRTABLE_TOKEN", "").strip())
+    has_base_id = bool(os.environ.get("AIRTABLE_BASE_ID", "").strip())
+
     return {
         "output_dir": str(run_dir),
         "candidate_count": len(candidates),
@@ -74,6 +111,10 @@ def build_weekly_run_summary(run_dir: Path) -> dict[str, object]:
         "hold_count": int(bucket_counts.get("hold", 0)),
         "assignment_count": len(assignments),
         "open_first": list(OUTPUT_OPEN_FIRST),
+        "assignment_status_dist": status_dist,
+        "attention_items": _collect_attention_items(assignments),
+        "airtable_token_set": has_token,
+        "airtable_base_id_set": has_base_id,
     }
 
 
@@ -93,6 +134,56 @@ def render_weekly_run_summary(summary: dict[str, object]) -> str:
         "Open first:",
     ]
     lines.extend("- %s" % name for name in summary.get("open_first", []))
+
+    # ── Operator Summary ──────────────────────────────────────────
+    lines.append("")
+    lines.append("─" * 52)
+    lines.append("OPERATOR SUMMARY")
+    lines.append("─" * 52)
+
+    # Assignment status distribution.
+    status_dist = dict(summary.get("assignment_status_dist", {}))
+    if status_dist:
+        lines.append("")
+        lines.append("Assignment Status:")
+        for status, count in sorted(status_dist.items()):
+            lines.append("  %-20s %d" % (status, count))
+    else:
+        lines.append("")
+        lines.append("Assignment Status: (none)")
+
+    # Top items needing attention.
+    attention = list(summary.get("attention_items", []))
+    lines.append("")
+    if attention:
+        lines.append("Top Items Needing Attention:")
+        for i, item in enumerate(attention, 1):
+            label = item.get("label", "unknown")
+            next_step = item.get("next_step", "")
+            blocking = item.get("blocking", "")
+            lines.append("  %d. %s" % (i, label))
+            if next_step:
+                lines.append("     Next step: %s" % next_step)
+            if blocking:
+                lines.append("     Blocking:  %s" % blocking)
+    else:
+        lines.append("Top Items Needing Attention: (none)")
+
+    # Airtable sync readiness.
+    token_ok = summary.get("airtable_token_set", False)
+    base_ok = summary.get("airtable_base_id_set", False)
+    lines.append("")
+    if token_ok and base_ok:
+        lines.append("Airtable Sync: READY (AIRTABLE_TOKEN and AIRTABLE_BASE_ID set)")
+    else:
+        missing = []
+        if not token_ok:
+            missing.append("AIRTABLE_TOKEN")
+        if not base_ok:
+            missing.append("AIRTABLE_BASE_ID")
+        lines.append("Airtable Sync: NOT CONFIGURED (missing %s)" % ", ".join(missing))
+
+    lines.append("─" * 52)
     return "\n".join(lines)
 
 
