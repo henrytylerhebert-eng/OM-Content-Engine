@@ -92,6 +92,32 @@ Run the same pipeline against local CSV exports placed in `data/raw/`:
 python3 -m src.reporting.raw_pipeline
 ```
 
+Run the phase-one portfolio snapshot example against a local JSON input:
+
+```bash
+python3 -m src.reporting.portfolio_pipeline
+```
+
+The portfolio example also includes a tracked reviewed-truth file at `data/reviewed_truth/portfolio_example_overrides.json`.
+
+Run the same phase-one portfolio flow for multiple local company inputs:
+
+```bash
+python3 -m src.reporting.portfolio_batch
+```
+
+Create or update one file-backed portfolio override rule safely:
+
+```bash
+python3 -m src.reporting.portfolio_override_tool --help
+```
+
+Write Airtable-aligned portfolio operational tables from the local example:
+
+```bash
+python3 -m src.reporting.portfolio_operational_export
+```
+
 Run the one-click weekly operator cycle against local CSV exports:
 
 ```bash
@@ -103,6 +129,9 @@ Put landed `Active Members`, `Mentors`, and `Cohorts` CSV exports in `data/raw/`
 Optional reviewed-truth overrides live in `data/reviewed_truth/overrides.json`. Start from `data/reviewed_truth/overrides.example.json` if you need a local template.
 
 Inspect generated demo and processed outputs in `data/processed/`.
+The portfolio example input lives in `data/raw/portfolio_example/acme_phase_one.json`.
+The runnable portfolio example writes JSON artifacts to `data/processed/portfolio_example/`.
+That snapshot now includes a rules-based internal recommendation draft alongside the existing portfolio draft artifacts.
 
 ## Demo Pipeline
 
@@ -126,6 +155,12 @@ The demo uses only local files. It does not require Airtable access or any exter
 
 More detail: `docs/demo-pipeline.md`
 Reviewed-truth model: `docs/reviewed-truth.md`
+Portfolio reviewed-truth model: `docs/portfolio-reviewed-truth.md`
+Portfolio override authoring helper: `docs/portfolio-override-authoring.md`
+Portfolio recommendation rules: `docs/portfolio-recommendations.md`
+Portfolio batching: `docs/portfolio-batching.md`
+Portfolio Airtable contract: `docs/portfolio-airtable-contract.md`
+Portfolio Airtable example mapping: `docs/portfolio-airtable-example.md`
 Quick system map and examples: `docs/system-map.md`
 Business definitions: `docs/business-definitions.md`
 Operational snapshot pack: `docs/operational-snapshot.md`
@@ -135,6 +170,7 @@ Content brief export: `docs/content-briefs.md`
 Editorial planning pack: `docs/editorial-planning.md`
 Editorial assignment tracker: `docs/editorial-assignments.md`
 Editorial assignment Airtable sync: `docs/editorial-assignments-sync.md`
+Editorial operator runbook: `docs/editorial-operator-runbook.md`
 
 ## Current Scope
 

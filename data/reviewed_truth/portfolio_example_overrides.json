@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "description": "Phase-one portfolio reviewed-truth example for the runnable Acme snapshot. This example keeps founder and internal outputs draft-only.",
+  "rules": [
+    {
+      "id": "review-acme-customer-signal",
+      "target": "evidence_items",
+      "match": {
+        "id": "evidence:acme_customer_signal"
+      },
+      "set": {
+        "truth_stage": "reviewed_evidence",
+        "review_status": "reviewed",
+        "review_notes": "Reviewed customer interview signal for the phase-one portfolio example.",
+        "reviewed_by": "portfolio_operator",
+        "reviewed_at": "2026-04-03T12:00:00+00:00"
+      },
+      "reason": "This evidence was manually reviewed and confirmed for the runnable example.",
+      "reviewed_by": "portfolio_operator",
+      "reviewed_at": "2026-04-03T12:00:00+00:00"
+    },
+    {
+      "id": "resolve-acme-customer-signal-review-queue",
+      "target": "review_queue_items",
+      "match": {
+        "linked_evidence_item_id": "evidence:acme_customer_signal",
+        "queue_reason_code": "review_stage_promotion"
+      },
+      "set": {
+        "queue_status": "resolved",
+        "resolution_note": "Evidence review completed through the portfolio override layer.",
+        "resolved_at": "2026-04-03T12:05:00+00:00"
+      },
+      "reason": "The explicit review decision should survive reruns without editing the raw example input.",
+      "reviewed_by": "portfolio_operator",
+      "reviewed_at": "2026-04-03T12:05:00+00:00"
+    },
+    {
+      "id": "adjust-acme-customer-risk-score",
+      "target": "domain_scores",
+      "match": {
+        "id": "domain_score:org_acme_automation:customer_risk"
+      },
+      "set": {
+        "raw_score": 4,
+        "confidence": "moderate",
+        "evidence_level": 3,
+        "score_status": "review_ready",
+        "review_status": "reviewed",
+        "review_notes": "Score adjusted after customer evidence review.",
+        "reviewed_by": "portfolio_operator",
+        "reviewed_at": "2026-04-03T12:10:00+00:00"
+      },
+      "reason": "Customer-risk score was manually adjusted from the reviewed evidence set.",
+      "reviewed_by": "portfolio_operator",
+      "reviewed_at": "2026-04-03T12:10:00+00:00"
+    }
+  ]
+}

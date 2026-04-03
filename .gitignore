@@ -9,11 +9,18 @@ __pycache__/
 
 data/raw/*
 !data/raw/.gitkeep
+!data/raw/portfolio_example/
+data/raw/portfolio_example/*
+!data/raw/portfolio_example/acme_phase_one.json
+!data/raw/portfolio_example/brightpath_phase_one.json
 data/processed/*
 !data/processed/.gitkeep
 data/reviewed_truth/*
 !data/reviewed_truth/.gitkeep
 !data/reviewed_truth/overrides.example.json
+!data/reviewed_truth/portfolio_example_overrides.json
+!data/reviewed_truth/acme_phase_one_overrides.json
+!data/reviewed_truth/portfolio_overrides.example.json
 data/*.db
 data/*.sqlite
 data/*.sqlite3
