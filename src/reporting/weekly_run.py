@@ -10,9 +10,13 @@ from typing import Optional, Sequence
 
 from src.reporting.demo_pipeline import SNAPSHOT_ARTIFACT_DESCRIPTIONS, write_demo_outputs
 from src.reporting.raw_pipeline import (
+    DEFAULT_ACTIVE_MEMBERS_TABLE,
+    DEFAULT_COHORTS_TABLE,
     DEFAULT_INPUT_DIR,
+    DEFAULT_MENTORS_TABLE,
     DEFAULT_OUTPUT_DIR,
     DEFAULT_OVERRIDES_FILE,
+    DEFAULT_SOURCE,
     build_local_bundle,
 )
 
@@ -194,9 +198,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         description="Run the local OM weekly operator cycle and print a compact summary.",
     )
     parser.add_argument(
+        "--source",
+        default=DEFAULT_SOURCE,
+        choices=("csv", "airtable"),
+        help="Source mode: landed CSV exports or live Airtable tables.",
+    )
+    parser.add_argument(
         "--input-dir",
         default=str(DEFAULT_INPUT_DIR),
-        help="Directory containing Active Members, Mentors, and optional Cohorts CSV exports.",
+        help="Directory containing Active Members, Mentors, and optional Cohorts CSV exports when --source csv is used.",
     )
     parser.add_argument(
         "--output-dir",
@@ -208,12 +218,31 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         default=str(DEFAULT_OVERRIDES_FILE),
         help="Optional reviewed-truth JSON override file. Missing files are ignored.",
     )
+    parser.add_argument(
+        "--active-members-table",
+        default=DEFAULT_ACTIVE_MEMBERS_TABLE,
+        help="Airtable table name for Active Members when --source airtable is used.",
+    )
+    parser.add_argument(
+        "--mentors-table",
+        default=DEFAULT_MENTORS_TABLE,
+        help="Airtable table name for Mentors when --source airtable is used.",
+    )
+    parser.add_argument(
+        "--cohorts-table",
+        default=DEFAULT_COHORTS_TABLE,
+        help="Airtable table name for Cohorts when --source airtable is used.",
+    )
     args = parser.parse_args(argv)
 
     output_dir = Path(args.output_dir)
     bundle = build_local_bundle(
         Path(args.input_dir),
         overrides_path=Path(args.overrides) if args.overrides else None,
+        source=args.source,
+        active_members_table=args.active_members_table,
+        mentors_table=args.mentors_table,
+        cohorts_table=args.cohorts_table,
     )
     write_demo_outputs(bundle, output_dir)
     verify_expected_outputs(output_dir)

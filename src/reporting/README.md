@@ -97,6 +97,12 @@ One-click weekly operator command:
 python3 -m src.reporting.weekly_run
 ```
 
+On-demand live Airtable weekly run:
+
+```bash
+python3 -m src.reporting.weekly_run --source airtable
+```
+
 Both pipeline entry points write the standard operational snapshot pack, including `snapshot_manifest.json` as a short index for the run.
 The portfolio snapshot entry point writes a smaller JSON-only artifact pack for one company and keeps all outputs internal/founder draft-oriented.
 

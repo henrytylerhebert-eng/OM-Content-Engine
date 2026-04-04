@@ -124,6 +124,12 @@ Run the one-click weekly operator cycle against local CSV exports:
 python3 -m src.reporting.weekly_run
 ```
 
+Run the same weekly cycle on demand against live Airtable tables:
+
+```bash
+python3 -m src.reporting.weekly_run --source airtable
+```
+
 Put landed `Active Members`, `Mentors`, and `Cohorts` CSV exports in `data/raw/`.
 
 Optional reviewed-truth overrides live in `data/reviewed_truth/overrides.json`. Start from `data/reviewed_truth/overrides.example.json` if you need a local template.

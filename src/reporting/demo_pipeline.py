@@ -230,21 +230,15 @@ def _build_unresolved_link_flag(raw_record: RawImportRecord, row: dict[str, str]
     )
 
 
-def build_demo_bundle(
-    active_members_path: Path = DEFAULT_ACTIVE_MEMBERS_PATH,
-    mentors_path: Path = DEFAULT_MENTORS_PATH,
-    cohorts_path: Optional[Path] = DEFAULT_COHORTS_PATH,
+def build_bundle_from_raw_records(
+    *,
+    raw_active_members: Sequence[RawImportRecord],
+    raw_mentors: Sequence[RawImportRecord],
+    raw_cohorts: Sequence[RawImportRecord],
     overrides_path: Optional[Path] = DEFAULT_OVERRIDES_FILE,
+    raw_sources: Optional[dict[str, dict[str, object]]] = None,
 ) -> dict[str, object]:
-    """Run the sample demo pipeline end to end."""
-
-    raw_active_members = load_airtable_csv_export(active_members_path, source_table="Active Members")
-    raw_mentors = load_airtable_csv_export(mentors_path, source_table="Mentors")
-    raw_cohorts = (
-        load_airtable_csv_export(cohorts_path, source_table="Cohorts")
-        if cohorts_path is not None and cohorts_path.exists()
-        else []
-    )
+    """Run the core pipeline against already-landed raw import records."""
 
     organizations_by_id: dict[str, dict[str, object]] = {}
     people_by_id: dict[str, dict[str, object]] = {}
@@ -601,7 +595,52 @@ def build_demo_bundle(
     ecosystem_summary["content_ready_people_count"] = len(reporting_snapshot["content_ready_people"])
 
     return {
-        "raw_sources": {
+        "raw_sources": raw_sources
+        or {
+            "active_members": {
+                "file_path": "",
+                "row_count": len(raw_active_members),
+            },
+            "mentors": {
+                "file_path": "",
+                "row_count": len(raw_mentors),
+            },
+            "cohorts": {
+                "file_path": "",
+                "row_count": len(raw_cohorts),
+            },
+        },
+        "normalized": normalized,
+        "reviewed_truth": reviewed_truth,
+        "content_intelligence": reviewed_content_bundle,
+        "review_rows": reviewed_review_rows,
+        "reporting_snapshot": reporting_snapshot,
+        "ecosystem_summary": ecosystem_summary,
+    }
+
+
+def build_demo_bundle(
+    active_members_path: Path = DEFAULT_ACTIVE_MEMBERS_PATH,
+    mentors_path: Path = DEFAULT_MENTORS_PATH,
+    cohorts_path: Optional[Path] = DEFAULT_COHORTS_PATH,
+    overrides_path: Optional[Path] = DEFAULT_OVERRIDES_FILE,
+) -> dict[str, object]:
+    """Run the sample demo pipeline end to end."""
+
+    raw_active_members = load_airtable_csv_export(active_members_path, source_table="Active Members")
+    raw_mentors = load_airtable_csv_export(mentors_path, source_table="Mentors")
+    raw_cohorts = (
+        load_airtable_csv_export(cohorts_path, source_table="Cohorts")
+        if cohorts_path is not None and cohorts_path.exists()
+        else []
+    )
+
+    return build_bundle_from_raw_records(
+        raw_active_members=raw_active_members,
+        raw_mentors=raw_mentors,
+        raw_cohorts=raw_cohorts,
+        overrides_path=overrides_path,
+        raw_sources={
             "active_members": {
                 "file_path": str(active_members_path),
                 "row_count": len(raw_active_members),
@@ -615,13 +654,7 @@ def build_demo_bundle(
                 "row_count": len(raw_cohorts),
             },
         },
-        "normalized": normalized,
-        "reviewed_truth": reviewed_truth,
-        "content_intelligence": reviewed_content_bundle,
-        "review_rows": reviewed_review_rows,
-        "reporting_snapshot": reporting_snapshot,
-        "ecosystem_summary": ecosystem_summary,
-    }
+    )
 
 
 def write_demo_outputs(bundle: dict[str, object], output_dir: Path = DEFAULT_OUTPUT_DIR) -> list[Path]:
