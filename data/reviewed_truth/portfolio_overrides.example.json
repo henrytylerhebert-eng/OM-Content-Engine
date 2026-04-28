@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "description": "Starter template for phase-one portfolio reviewed-truth overrides.",
+  "rules": [
+    {
+      "id": "review-example-evidence",
+      "target": "evidence_items",
+      "match": {
+        "id": "evidence:example_signal"
+      },
+      "set": {
+        "truth_stage": "reviewed_evidence",
+        "review_status": "reviewed",
+        "reviewed_by": "portfolio_operator",
+        "reviewed_at": "2026-04-03T12:00:00+00:00",
+        "review_notes": "Manual review confirmed this evidence."
+      },
+      "reason": "Use this pattern when a specific extracted evidence item has been manually reviewed."
+    },
+    {
+      "id": "adjust-example-score",
+      "target": "domain_scores",
+      "match": {
+        "id": "domain_score:org_example:customer_risk"
+      },
+      "set": {
+        "raw_score": 4,
+        "confidence": "moderate",
+        "score_status": "review_ready",
+        "review_status": "reviewed",
+        "review_notes": "Score updated after evidence review."
+      },
+      "reason": "Use this pattern when a score needs a durable manual adjustment."
+    },
+    {
+      "id": "approve-example-internal-draft",
+      "target": "internal_report_draft",
+      "match": {
+        "id": "internal_report:org_example:2026_q2"
+      },
+      "set": {
+        "draft_status": "reviewed",
+        "review_status": "internally_approved",
+        "truth_stage": "internally_approved_output",
+        "internal_approved_by": "portfolio_operator",
+        "internal_approved_at": "2026-04-03T12:15:00+00:00"
+      },
+      "reason": "Use this pattern when an internal draft is approved for operational use."
+    }
+  ]
+}

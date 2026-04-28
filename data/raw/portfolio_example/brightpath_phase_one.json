@@ -1,0 +1,262 @@
+{
+  "organization_id": "org:brightpath_health",
+  "company_name": "BrightPath Health",
+  "report_period": "2026-Q2",
+  "assembled_by": "portfolio_pipeline_example",
+  "discovery_sources": [
+    {
+      "item_id": "discovery_source:brightpath_customer_calls",
+      "source_kind": "google_doc",
+      "organization_id": "org:brightpath_health",
+      "title": "BrightPath customer discovery notes",
+      "description": "Operator notes from five customer-development interviews.",
+      "source_system": "google_doc",
+      "source_document_id": "doc_brightpath_customer_calls_001",
+      "source_url": "https://docs.example.com/brightpath/customer-calls",
+      "captured_at": "2026-04-02T09:00:00+00:00",
+      "ingested_at": "2026-04-03T10:00:00+00:00",
+      "provenance_note": "Operator imported customer-discovery notes."
+    },
+    {
+      "item_id": "discovery_source:brightpath_gtm_review",
+      "source_kind": "meeting_note",
+      "organization_id": "org:brightpath_health",
+      "title": "BrightPath GTM review",
+      "description": "Internal note from GTM review with partner outreach feedback.",
+      "source_system": "manual_entry",
+      "source_path": "local_notes/brightpath_gtm_review.md",
+      "captured_at": "2026-04-02T16:15:00+00:00",
+      "ingested_at": "2026-04-03T10:00:00+00:00",
+      "provenance_note": "Operator captured GTM and channel feedback."
+    }
+  ],
+  "evidence_targets": [
+    {
+      "discovery_source_id": "discovery_source:brightpath_customer_calls",
+      "target_id": "brightpath_market_signal",
+      "evidence_type": "interview_quote",
+      "primary_domain": "market_risk",
+      "evidence_statement": "Clinic operators describe the care-navigation workflow as urgent and recurring.",
+      "excerpt": "Operators say discharge coordination remains manual and time consuming.",
+      "evidence_level": 2,
+      "assumption_title": "The problem may be broadly painful across similar clinics",
+      "assumption_statement": "The team may be addressing a recurring operational pain point, not a niche edge case."
+    },
+    {
+      "discovery_source_id": "discovery_source:brightpath_gtm_review",
+      "target_id": "brightpath_channel_gap",
+      "evidence_type": "observation",
+      "primary_domain": "go_to_market_risk",
+      "evidence_statement": "Partner outreach is active, but no repeatable conversion path exists yet.",
+      "excerpt": "The team has conversations underway, but channel conversion is still inconsistent.",
+      "evidence_level": 1,
+      "assumption_statement": "The GTM motion is still too founder-led to become repeatable."
+    }
+  ],
+  "domain_scores": [
+    {
+      "domain_key": "market_risk",
+      "rationale": "The market signal is promising, but it still needs reviewed support across a broader sample.",
+      "key_gap": "Need reviewed demand evidence across more than one clinic segment.",
+      "next_action": "Review interview notes and cluster repeat demand patterns.",
+      "linked_assumption_ids": [
+        "assumption:brightpath_market_signal"
+      ],
+      "generated_by": "portfolio_pipeline_example"
+    },
+    {
+      "domain_key": "go_to_market_risk",
+      "rationale": "The GTM motion is visible, but it is still inconsistent and highly founder dependent.",
+      "key_gap": "Need evidence of a repeatable partner conversion path.",
+      "next_action": "Capture structured partner outreach outcomes and conversion blockers.",
+      "linked_assumption_ids": [
+        "assumption:brightpath_channel_gap"
+      ],
+      "generated_by": "portfolio_pipeline_example"
+    }
+  ],
+  "capital_readiness_drafts": [
+    {
+      "draft_id": "capital_readiness:org_brightpath_health:internal:2026_q2",
+      "audience": "internal",
+      "draft_status": "draft",
+      "readiness_status": "needs_review",
+      "primary_capital_path": "strategic introductions",
+      "readiness_rationale": "The problem narrative is interesting, but the company still needs reviewed market and GTM evidence.",
+      "blocking_gaps": [
+        "Reviewed market evidence is still missing",
+        "Repeatable GTM proof is still missing"
+      ],
+      "required_evidence": [
+        "Reviewed demand signal from multiple clinics",
+        "Reviewed partner conversion evidence"
+      ],
+      "support_routing_recommendation": "Route customer discovery synthesis and GTM design support next.",
+      "next_milestone": "Validate one repeatable clinic segment and document the partner conversion path.",
+      "linked_domain_score_ids": [
+        "domain_score:org_brightpath_health:market_risk",
+        "domain_score:org_brightpath_health:go_to_market_risk"
+      ],
+      "linked_discovery_source_ids": [
+        "discovery_source:brightpath_customer_calls",
+        "discovery_source:brightpath_gtm_review"
+      ],
+      "linked_evidence_ids": [
+        "evidence:brightpath_market_signal",
+        "evidence:brightpath_channel_gap"
+      ],
+      "linked_assumption_ids": [
+        "assumption:brightpath_market_signal",
+        "assumption:brightpath_channel_gap"
+      ],
+      "generated_by": "portfolio_pipeline_example"
+    }
+  ],
+  "support_routing_drafts": [
+    {
+      "draft_id": "support_routing:org_brightpath_health:2026_q2:gtm_design",
+      "audience": "internal",
+      "draft_status": "draft",
+      "route_recommendation": "Route customer discovery synthesis and GTM design support next.",
+      "route_category": "gtm_support",
+      "route_rationale": "The team needs a clearer demand narrative and a more repeatable conversion motion before capital discussions.",
+      "priority_domain": "go_to_market_risk",
+      "linked_domain_score_ids": [
+        "domain_score:org_brightpath_health:market_risk",
+        "domain_score:org_brightpath_health:go_to_market_risk"
+      ],
+      "linked_capital_readiness_draft_ids": [
+        "capital_readiness:org_brightpath_health:internal:2026_q2"
+      ],
+      "linked_discovery_source_ids": [
+        "discovery_source:brightpath_customer_calls",
+        "discovery_source:brightpath_gtm_review"
+      ],
+      "linked_evidence_ids": [
+        "evidence:brightpath_market_signal",
+        "evidence:brightpath_channel_gap"
+      ],
+      "linked_assumption_ids": [
+        "assumption:brightpath_market_signal",
+        "assumption:brightpath_channel_gap"
+      ],
+      "generated_by": "portfolio_pipeline_example"
+    }
+  ],
+  "milestone_drafts": [
+    {
+      "draft_id": "milestone:org_brightpath_health:2026_q2:segment_validation",
+      "audience": "internal",
+      "draft_status": "draft",
+      "milestone_statement": "Validate one repeatable clinic segment and document the partner conversion path.",
+      "milestone_category": "segment_validation",
+      "milestone_rationale": "The team needs one grounded segment plus a clearer GTM path before a stronger capital conversation.",
+      "target_window": "next_45_days",
+      "priority_domain": "go_to_market_risk",
+      "linked_domain_score_ids": [
+        "domain_score:org_brightpath_health:market_risk",
+        "domain_score:org_brightpath_health:go_to_market_risk"
+      ],
+      "linked_capital_readiness_draft_ids": [
+        "capital_readiness:org_brightpath_health:internal:2026_q2"
+      ],
+      "linked_discovery_source_ids": [
+        "discovery_source:brightpath_customer_calls",
+        "discovery_source:brightpath_gtm_review"
+      ],
+      "linked_evidence_ids": [
+        "evidence:brightpath_market_signal",
+        "evidence:brightpath_channel_gap"
+      ],
+      "linked_assumption_ids": [
+        "assumption:brightpath_market_signal",
+        "assumption:brightpath_channel_gap"
+      ],
+      "generated_by": "portfolio_pipeline_example"
+    }
+  ],
+  "founder_report": {
+    "draft_status": "draft",
+    "strengths": [
+      "Customer conversations suggest a real operational pain point."
+    ],
+    "top_gaps": [
+      "Need reviewed demand evidence across more clinics.",
+      "Need a more repeatable GTM motion."
+    ],
+    "evidence_improving": [
+      "Customer interviews are starting to cluster around one operational workflow."
+    ],
+    "milestones": [
+      "Customer discovery notes captured.",
+      "GTM review captured."
+    ],
+    "recommended_next_actions": [
+      "Review and synthesize clinic interview evidence.",
+      "Document channel conversion blockers and next experiments."
+    ],
+    "capital_readiness_summary": "Capital readiness remains a draft view only. The team still needs reviewed market and GTM evidence before a stronger capital-path conversation.",
+    "linked_domain_score_ids": [
+      "domain_score:org_brightpath_health:market_risk",
+      "domain_score:org_brightpath_health:go_to_market_risk"
+    ],
+    "linked_capital_readiness_draft_ids": [
+      "capital_readiness:org_brightpath_health:internal:2026_q2"
+    ],
+    "linked_discovery_source_ids": [
+      "discovery_source:brightpath_customer_calls",
+      "discovery_source:brightpath_gtm_review"
+    ],
+    "linked_evidence_ids": [
+      "evidence:brightpath_market_signal",
+      "evidence:brightpath_channel_gap"
+    ],
+    "linked_assumption_ids": [
+      "assumption:brightpath_market_signal",
+      "assumption:brightpath_channel_gap"
+    ],
+    "generated_by": "portfolio_pipeline_example"
+  },
+  "internal_report": {
+    "draft_status": "draft",
+    "current_strengths": [
+      "Customer need is becoming more legible."
+    ],
+    "stuck_reasons": [
+      "The GTM path is still too founder dependent."
+    ],
+    "watchlist_status": "monitor_closely",
+    "recommended_support_route": "Customer discovery synthesis and GTM design support.",
+    "milestone_status": "segment_and_channel_validation_needed",
+    "capital_paths_considered": [
+      "strategic introductions"
+    ],
+    "priority_domains": [
+      "market_risk",
+      "go_to_market_risk"
+    ],
+    "linked_domain_score_ids": [
+      "domain_score:org_brightpath_health:market_risk",
+      "domain_score:org_brightpath_health:go_to_market_risk"
+    ],
+    "linked_capital_readiness_draft_ids": [
+      "capital_readiness:org_brightpath_health:internal:2026_q2"
+    ],
+    "linked_discovery_source_ids": [
+      "discovery_source:brightpath_customer_calls",
+      "discovery_source:brightpath_gtm_review"
+    ],
+    "linked_evidence_ids": [
+      "evidence:brightpath_market_signal",
+      "evidence:brightpath_channel_gap"
+    ],
+    "linked_assumption_ids": [
+      "assumption:brightpath_market_signal",
+      "assumption:brightpath_channel_gap"
+    ],
+    "internal_notes": [
+      "Do not push capital introductions until reviewed market evidence is stronger."
+    ],
+    "generated_by": "portfolio_pipeline_example"
+  }
+}

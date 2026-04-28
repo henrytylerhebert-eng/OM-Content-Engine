@@ -1,6 +1,6 @@
-"""Tests for file-backed synthetic export fixtures."""
+"""Tests for file-backed and live-style Airtable ingest helpers."""
 
-from src.ingest.airtable_import import load_airtable_csv_export
+from src.ingest.airtable_import import build_raw_import_records, load_airtable_csv_export
 from tests.fixtures.pilot_rows import (
     ACTIVE_MEMBER_ROWS,
     MENTOR_ROWS,
@@ -60,3 +60,30 @@ def test_fixture_exports_cover_requested_sample_shapes() -> None:
         "rec_mentor_002",
         "rec_mentor_003",
     }
+
+
+def test_build_raw_import_records_supports_live_airtable_style_rows() -> None:
+    records = build_raw_import_records(
+        [
+            {
+                "Record ID": "rec_live_001",
+                "Full Name": "Live Person",
+                "Public Ready": True,
+                "Expertise": ["AI", "Ops"],
+            }
+        ],
+        source_table="Mentors",
+        source_system="airtable_live",
+        file_path="airtable://appExample123/Mentors",
+    )
+
+    assert len(records) == 1
+    record = records[0]
+    assert record.source_table == "Mentors"
+    assert record.source_system == "airtable_live"
+    assert record.source_record_id == "rec_live_001"
+    assert record.file_path == "airtable://appExample123/Mentors"
+    assert record.raw["Record ID"] == "rec_live_001"
+    assert record.raw["Airtable Record ID"] == "rec_live_001"
+    assert record.raw["Public Ready"] == "true"
+    assert record.raw["Expertise"] == "AI, Ops"

@@ -1,0 +1,311 @@
+{
+  "organization_id": "org:acme_automation",
+  "company_name": "Acme Automation",
+  "report_period": "2026-Q2",
+  "assembled_by": "portfolio_pipeline_example",
+  "discovery_sources": [
+    {
+      "item_id": "discovery_source:acme_founder_call",
+      "source_kind": "google_doc",
+      "organization_id": "org:acme_automation",
+      "title": "Acme founder call - April 2026",
+      "description": "Founder debrief after three customer interviews.",
+      "source_system": "google_doc",
+      "source_document_id": "doc_acme_founder_call_001",
+      "source_url": "https://docs.example.com/acme/founder-call",
+      "captured_at": "2026-04-01T10:00:00+00:00",
+      "ingested_at": "2026-04-03T10:00:00+00:00",
+      "provenance_note": "Operator imported founder interview notes.",
+      "raw_payload_excerpt": {
+        "summary": "Founder shared repeated pain point notes from customer calls."
+      }
+    },
+    {
+      "item_id": "discovery_source:acme_onboarding_review",
+      "source_kind": "meeting_note",
+      "organization_id": "org:acme_automation",
+      "title": "Acme onboarding review",
+      "description": "Operator notes from onboarding support review.",
+      "source_system": "manual_entry",
+      "source_path": "local_notes/acme_onboarding_review.md",
+      "captured_at": "2026-04-02T15:30:00+00:00",
+      "ingested_at": "2026-04-03T10:00:00+00:00",
+      "provenance_note": "Operator meeting notes from onboarding review.",
+      "raw_payload_excerpt": {
+        "summary": "Support requests still cluster around first workflow setup."
+      }
+    }
+  ],
+  "evidence_targets": [
+    {
+      "discovery_source_id": "discovery_source:acme_founder_call",
+      "target_id": "acme_customer_signal",
+      "evidence_type": "interview_quote",
+      "primary_domain": "customer_risk",
+      "evidence_statement": "Three pilot customers independently described the same workflow bottleneck.",
+      "excerpt": "Customers named the same painful spreadsheet handoff.",
+      "evidence_level": 3,
+      "assumption_title": "Demand pattern appears consistent",
+      "assumption_statement": "The team may be solving a recurring, not isolated, customer pain point."
+    },
+    {
+      "discovery_source_id": "discovery_source:acme_onboarding_review",
+      "target_id": "acme_onboarding_gap",
+      "evidence_type": "observation",
+      "primary_domain": "product_risk",
+      "evidence_statement": "New users still require manual onboarding support after week two.",
+      "excerpt": "Support tickets cluster around first workflow setup.",
+      "evidence_level": 2,
+      "assumption_statement": "The onboarding flow is not yet self-serve enough to scale."
+    }
+  ],
+  "domain_scores": [
+    {
+      "domain_key": "customer_risk",
+      "rationale": "Interview evidence suggests repeated customer pain across multiple pilots.",
+      "key_gap": "Need repeat-usage proof after pilot onboarding.",
+      "next_action": "Collect structured retention and repeat-usage evidence.",
+      "linked_assumption_ids": [
+        "assumption:acme_customer_signal"
+      ],
+      "generated_by": "portfolio_pipeline_example"
+    },
+    {
+      "domain_key": "product_risk",
+      "rationale": "Onboarding friction is visible, but the supporting evidence still needs review.",
+      "key_gap": "Need reviewed evidence on activation and onboarding drop-off.",
+      "next_action": "Review onboarding support notes and instrument activation milestones.",
+      "linked_assumption_ids": [
+        "assumption:acme_onboarding_gap"
+      ],
+      "generated_by": "portfolio_pipeline_example"
+    }
+  ],
+  "capital_readiness_drafts": [
+    {
+      "draft_id": "capital_readiness:org_acme_automation:internal:2026_q2",
+      "audience": "internal",
+      "draft_status": "draft",
+      "readiness_status": "emerging",
+      "primary_capital_path": "pre-seed venture",
+      "secondary_capital_paths": [
+        "operator network introductions"
+      ],
+      "readiness_rationale": "Demand evidence is improving, but the company still needs reviewed product and retention evidence.",
+      "blocking_gaps": [
+        "Reviewed retention evidence is still missing",
+        "Onboarding remains manual"
+      ],
+      "required_evidence": [
+        "Reviewed activation evidence",
+        "Reviewed repeat-usage evidence"
+      ],
+      "support_routing_recommendation": "Route product onboarding support before capital introductions.",
+      "next_milestone": "Validate onboarding improvements with the next three pilots.",
+      "linked_domain_score_ids": [
+        "domain_score:org_acme_automation:customer_risk",
+        "domain_score:org_acme_automation:product_risk"
+      ],
+      "linked_discovery_source_ids": [
+        "discovery_source:acme_founder_call",
+        "discovery_source:acme_onboarding_review"
+      ],
+      "linked_evidence_ids": [
+        "evidence:acme_customer_signal",
+        "evidence:acme_onboarding_gap"
+      ],
+      "linked_assumption_ids": [
+        "assumption:acme_customer_signal",
+        "assumption:acme_onboarding_gap"
+      ],
+      "generated_by": "portfolio_pipeline_example"
+    },
+    {
+      "draft_id": "capital_readiness:org_acme_automation:founder:2026_q2",
+      "audience": "founder",
+      "draft_status": "draft",
+      "readiness_status": "needs_review",
+      "primary_capital_path": "pre-seed venture",
+      "readiness_rationale": "Customer signal is strengthening, but the company still needs cleaner proof before a capital process.",
+      "blocking_gaps": [
+        "Need reviewed retention proof",
+        "Need stronger onboarding evidence"
+      ],
+      "required_evidence": [
+        "Repeat-usage proof",
+        "Structured customer demand evidence"
+      ],
+      "next_milestone": "Convert onboarding lessons into a repeatable activation flow.",
+      "linked_domain_score_ids": [
+        "domain_score:org_acme_automation:customer_risk",
+        "domain_score:org_acme_automation:product_risk"
+      ],
+      "linked_discovery_source_ids": [
+        "discovery_source:acme_founder_call",
+        "discovery_source:acme_onboarding_review"
+      ],
+      "linked_evidence_ids": [
+        "evidence:acme_customer_signal",
+        "evidence:acme_onboarding_gap"
+      ],
+      "generated_by": "portfolio_pipeline_example"
+    }
+  ],
+  "support_routing_drafts": [
+    {
+      "draft_id": "support_routing:org_acme_automation:2026_q2:onboarding_support",
+      "audience": "internal",
+      "draft_status": "draft",
+      "route_recommendation": "Route product onboarding support before capital introductions.",
+      "route_category": "product_support",
+      "route_rationale": "Customer signal is improving, but onboarding friction still blocks cleaner activation evidence.",
+      "priority_domain": "product_risk",
+      "linked_domain_score_ids": [
+        "domain_score:org_acme_automation:customer_risk",
+        "domain_score:org_acme_automation:product_risk"
+      ],
+      "linked_capital_readiness_draft_ids": [
+        "capital_readiness:org_acme_automation:internal:2026_q2"
+      ],
+      "linked_discovery_source_ids": [
+        "discovery_source:acme_founder_call",
+        "discovery_source:acme_onboarding_review"
+      ],
+      "linked_evidence_ids": [
+        "evidence:acme_customer_signal",
+        "evidence:acme_onboarding_gap"
+      ],
+      "linked_review_queue_ids": [
+        "review:evidence_item:evidence_acme_onboarding_gap:review_stage_promotion"
+      ],
+      "linked_assumption_ids": [
+        "assumption:acme_customer_signal",
+        "assumption:acme_onboarding_gap"
+      ],
+      "generated_by": "portfolio_pipeline_example"
+    }
+  ],
+  "milestone_drafts": [
+    {
+      "draft_id": "milestone:org_acme_automation:2026_q2:onboarding_activation",
+      "audience": "internal",
+      "draft_status": "draft",
+      "milestone_statement": "Validate onboarding improvements with the next three pilots.",
+      "milestone_category": "product_activation",
+      "milestone_rationale": "This is the next internal milestone before the company can support a stronger capital-readiness discussion.",
+      "target_window": "next_30_days",
+      "priority_domain": "product_risk",
+      "linked_domain_score_ids": [
+        "domain_score:org_acme_automation:customer_risk",
+        "domain_score:org_acme_automation:product_risk"
+      ],
+      "linked_capital_readiness_draft_ids": [
+        "capital_readiness:org_acme_automation:internal:2026_q2"
+      ],
+      "linked_discovery_source_ids": [
+        "discovery_source:acme_founder_call",
+        "discovery_source:acme_onboarding_review"
+      ],
+      "linked_evidence_ids": [
+        "evidence:acme_customer_signal",
+        "evidence:acme_onboarding_gap"
+      ],
+      "linked_review_queue_ids": [
+        "review:evidence_item:evidence_acme_onboarding_gap:review_stage_promotion"
+      ],
+      "linked_assumption_ids": [
+        "assumption:acme_customer_signal",
+        "assumption:acme_onboarding_gap"
+      ],
+      "generated_by": "portfolio_pipeline_example"
+    }
+  ],
+  "founder_report": {
+    "draft_status": "draft",
+    "strengths": [
+      "Customer pain is becoming more consistent across early interviews."
+    ],
+    "top_gaps": [
+      "Need reviewed repeat-usage and retention evidence.",
+      "Onboarding still depends on manual support."
+    ],
+    "evidence_improving": [
+      "Customer pain statements are now repeated across three pilots."
+    ],
+    "milestones": [
+      "Three pilot interviews reviewed.",
+      "Onboarding support review captured."
+    ],
+    "recommended_next_actions": [
+      "Tighten onboarding flow and capture activation evidence.",
+      "Collect repeat-usage proof from current pilots."
+    ],
+    "capital_readiness_summary": "Capital readiness remains a draft view only. Customer signal is improving, but the company still needs cleaner reviewed proof before a capital path discussion.",
+    "linked_domain_score_ids": [
+      "domain_score:org_acme_automation:customer_risk",
+      "domain_score:org_acme_automation:product_risk"
+    ],
+    "linked_capital_readiness_draft_ids": [
+      "capital_readiness:org_acme_automation:founder:2026_q2"
+    ],
+    "linked_discovery_source_ids": [
+      "discovery_source:acme_founder_call",
+      "discovery_source:acme_onboarding_review"
+    ],
+    "linked_evidence_ids": [
+      "evidence:acme_customer_signal",
+      "evidence:acme_onboarding_gap"
+    ],
+    "linked_assumption_ids": [
+      "assumption:acme_customer_signal",
+      "assumption:acme_onboarding_gap"
+    ],
+    "generated_by": "portfolio_pipeline_example"
+  },
+  "internal_report": {
+    "draft_status": "draft",
+    "current_strengths": [
+      "Customer pain is clearer across multiple interviews."
+    ],
+    "stuck_reasons": [
+      "Onboarding still creates manual support load."
+    ],
+    "watchlist_status": "monitor product onboarding follow-through",
+    "recommended_support_route": "Product onboarding support and retention instrumentation.",
+    "milestone_status": "Customer signal improving; activation proof incomplete.",
+    "capital_paths_considered": [
+      "pre-seed venture",
+      "operator network introductions"
+    ],
+    "priority_domains": [
+      "customer_risk",
+      "product_risk"
+    ],
+    "linked_domain_score_ids": [
+      "domain_score:org_acme_automation:customer_risk",
+      "domain_score:org_acme_automation:product_risk"
+    ],
+    "linked_capital_readiness_draft_ids": [
+      "capital_readiness:org_acme_automation:internal:2026_q2"
+    ],
+    "linked_discovery_source_ids": [
+      "discovery_source:acme_founder_call",
+      "discovery_source:acme_onboarding_review"
+    ],
+    "linked_evidence_ids": [
+      "evidence:acme_customer_signal",
+      "evidence:acme_onboarding_gap"
+    ],
+    "linked_review_queue_ids": [
+      "review:evidence_item:evidence_acme_onboarding_gap:review_stage_promotion"
+    ],
+    "linked_assumption_ids": [
+      "assumption:acme_customer_signal",
+      "assumption:acme_onboarding_gap"
+    ],
+    "internal_notes": [
+      "Do not route to investor-facing work until product-risk evidence is reviewed."
+    ],
+    "generated_by": "portfolio_pipeline_example"
+  }
+}
