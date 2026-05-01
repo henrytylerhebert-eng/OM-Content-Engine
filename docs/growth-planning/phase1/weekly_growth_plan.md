@@ -64,12 +64,13 @@ CTA: Complete the interest form
 | Ready to create now | Requires proof first |
 |--------------------|----------------------|
 | Hook 04 — Deadline post ("forms close May 29") | Hook 01 — Needs curriculum description |
-| Basic program info post (dates, CTA, link) | Hook 03 — Needs selection criteria confirmed |
-| Referral ask post to OM network | Hook 05 — Needs named author + internal rubric |
+| Basic program info post (dates, CTA, link) | Hook 02 — Needs mentor role description |
+| Referral ask post to OM network | Hook 03 — Needs selection criteria confirmed |
+| | Hook 05 — Needs named author + internal rubric |
 
 **This week's minimum:** Publish 1 post. Hook 04 is ready — no proof required. Schedule it for [DATE].
 
-**Do not publish Hook 01, 03, or 05 until missing proof items are resolved.**
+**Do not publish Hook 01, 02, 03, or 05 until missing proof items are resolved.**
 
 ---
 
